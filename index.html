@@ -1958,6 +1958,7 @@
                     width="100%" 
                     height="100%"
                     xmlns="http://www.w3.org/2000/svg"
+                    xmlnsXlink="http://www.w3.org/1999/xlink"
                   >
                     <defs>
                       {/* Gradient Definitions based on customization setting */}
@@ -2023,6 +2024,7 @@
                           {logoPreview && (
                             <image 
                               href={logoPreview} 
+                              xlinkHref={logoPreview}
                               x={200 - (200 * (logoScale/100))} 
                               y={200 - (200 * (logoScale/100))} 
                               width={400 * (logoScale/100)} 
@@ -2040,6 +2042,7 @@
                         {logoPreview && (
                           <image 
                             href={logoPreview} 
+                            xlinkHref={logoPreview}
                             x={200 - (200 * (logoScale/100))} 
                             y={200 - (200 * (logoScale/100))} 
                             width={400 * (logoScale/100)} 
