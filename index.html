@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Pro Studio - Production-Grade Custom QR Code Generator</title>
-    <!-- Favicon -->
+	<!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="qrpro.ico">
-	<!-- Tailwind CSS -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -615,12 +615,21 @@ const state = {
 };
 
 // Session Identifiers (Mandatory session rules)
-const SESSION_ID = Math.floor(1000 + Math.random() * 9000).toString();
+let SESSION_ID = Math.floor(1000 + Math.random() * 9000).toString();
 const NOW = new Date();
 const DD = String(NOW.getDate()).padStart(2, '0');
 const MM = String(NOW.getMonth() + 1).padStart(2, '0');
 const YY = String(NOW.getFullYear()).slice(-2);
 const DATE_STR = `${DD}${MM}${YY}`;
+
+// Regenerate Session ID on Reset
+function regenerateSessionId() {
+    SESSION_ID = Math.floor(1000 + Math.random() * 9000).toString();
+    const sessionDisplay = document.getElementById('session-id-display');
+    if (sessionDisplay) {
+        sessionDisplay.innerText = SESSION_ID;
+    }
+}
 
 // Unit Conversions
 function convertToPixels(val, unit, dpi) {
@@ -699,12 +708,12 @@ const DATA_TYPE_FIELDS = {
         { id: 'end', label: 'End Time', type: 'datetime-local' }
     ],
     crypto: [
-        { id: 'coin', label: 'Coin / Token', type: 'select', options: ['bitcoin', 'ethereum', 'solana', 'usdt'] },
+        { id: 'coin', label: 'Coin / Token', type: 'select', options: ['bitcoin', 'ethereum', 'solana', 'usdt', 'bnb', 'xrp', 'dogecoin', 'cardano', 'tron', 'staked-ether', 'wrapped-bitcoin', 'chainlink', 'hyperliquid', 'stellar', 'sui', 'bitcoin-cash', 'hedera', 'avalanche-2', 'litecoin', 'leo-token', 'toncoin', 'shiba-inu', 'uniswap', 'polkadot', 'ethena-usde', 'whitebit', 'bitget-token', 'monero', 'pepe', 'aptos', 'near', 'aave', 'dai', 'internet-computer', 'ondo-finance', 'mantle', 'ethereum-classic', 'pi-network', 'official-trump', 'vechain', 'bittensor', 'algorand', 'render-token', 'kaspa', 'cosmos', 'filecoin', 'gatechain-token', 'worldcoin-wld', 'jupiter-exchange-solana', 'sei-network', 'polygon-ecosystem-token', 'arbitrum', 'celestia', 'maker', 'optimism', 'bonk', 'injective-protocol', 'rocket-pool-eth', 'the-graph', 'flare-networks', 'immutable-x', 'fartcoin', 'lido-dao', 'quant-network', 'mantra-dao', 'eos', 'virtual-protocol', 'binance-bridged-usdt-bnb-smart-chain', 'the-open-network', 'cronos', 'pudgy-penguins', 'story-protocol', 'jasmycoin', 'theta-token', 'gala', 'staking', 'flow', 'curve-dao-token', 'kaia', 'pancakeswap-token', 'dogwifcoin', 'ether-fi', 'coredaoorg', 'paypal-usd', 'brett', 'tezos', 'zcash', 'thorchain', 'decentraland', 'sandbox', 'raydium', 'aerodrome-finance', 'helium', 'compound-governance-token', 'eigenlayer', 'spx6900', 'mog-coin', 'beam-2', 'reserve-rights-token', 'pendle', 'axie-infinity'] },
         { id: 'address', label: 'Wallet Address', type: 'text', placeholder: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa' },
         { id: 'amount', label: 'Amount (Optional)', type: 'text', placeholder: '0.05' }
     ],
     social: [
-        { id: 'platform', label: 'Platform', type: 'select', options: ['instagram', 'twitter', 'linkedin', 'facebook', 'youtube', 'tiktok'] },
+        { id: 'platform', label: 'Platform', type: 'select', options: ['facebook', 'instagram', 'twitter', 'x', 'linkedin', 'youtube', 'tiktok', 'snapchat', 'reddit', 'pinterest', 'tumblr', 'threads', 'discord', 'telegram', 'whatsapp', 'messenger', 'wechat', 'line', 'viber', 'signal', 'kakao-talk', 'qq', 'douyin', 'weibo', 'xiaohongshu', 'vk', 'ok', 'mastodon', 'bluesky', 'truth-social', 'gab', 'parler', 'clubhouse', 'twitch', 'kick', 'rumble', 'odysee', 'bilibili', 'dailymotion', 'vimeo', 'quora', 'medium', 'substack', 'patreon', 'behance', 'dribbble', 'deviantart', 'flickr', 'imgur', 'pixiv', 'vsco', 'bereal', 'yubo', 'meetup', 'nextdoor', 'skype', 'teams', 'slack'] },
         { id: 'handle', label: 'Username or URL', type: 'text', placeholder: 'username' }
     ],
     raw: [
@@ -1480,7 +1489,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.execCommand('copy');
         document.body.removeChild(tx);
 
-        alert('Base64 String Copied to Clipboard!');
+        const copyBtn = document.getElementById('btn-copy-base64');
+        const originalText = copyBtn.innerHTML;
+        copyBtn.innerHTML = `<i class="fa-solid fa-check text-emerald-500"></i> Copied!`;
+        setTimeout(() => { copyBtn.innerHTML = originalText; }, 2000);
     });
 
     // Camera Modal
@@ -1521,7 +1533,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderDynamicFields();
                 updatePreview();
             } catch(err) {
-                alert('Invalid JSON Preset File');
+                console.error('Invalid JSON Preset File', err);
             }
         };
         reader.readAsText(e.target.files[0]);
@@ -1529,45 +1541,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Reset Engine
     document.getElementById('btn-reset-engine').addEventListener('click', () => {
-        if (confirm('Are you sure you want to reset all QR code settings?')) {
-            state.dataType = 'url';
-            state.dataValues = {};
-            state.size = 2;
-            state.sizeUnit = 'inch';
-            state.dpi = 600;
-            state.ecc = 'H';
-            state.margin = 0.2;
-            state.marginUnit = 'inch';
-            state.moduleStyle = 'square';
-            state.eyeFrameStyle = 'square';
-            state.eyeballStyle = 'square';
-            state.fgColor = '#000000';
-            state.bgColor = '#FFFFFF';
-            state.transparentBg = false;
-            state.useGradient = false;
-            state.frameStyle = 'none';
-            state.frameTopText = '';
-            state.frameBottomText = '';
-            state.logoDataUrl = null;
-            state.logoIsSvg = false;
-            state.logoSvgRaw = null;
+        // Regenerate 4-digit Session ID on each reset
+        regenerateSessionId();
 
-            document.getElementById('input-qr-size').value = 2;
-            document.getElementById('select-size-unit').value = 'inch';
-            document.getElementById('select-dpi').value = '600';
-            document.getElementById('select-ecc').value = 'H';
-            document.getElementById('input-margin').value = 0.2;
-            document.getElementById('picker-fg-color').value = '#000000';
-            document.getElementById('text-fg-color').value = '#000000';
-            document.getElementById('picker-bg-color').value = '#FFFFFF';
-            document.getElementById('text-bg-color').value = '#FFFFFF';
-            document.getElementById('chk-transparent-bg').checked = false;
-            document.getElementById('chk-use-gradient').checked = false;
-            document.getElementById('gradient-options').classList.add('hidden');
-            removeLogoBtn.classList.add('hidden');
+        state.dataType = 'url';
+        state.dataValues = {};
+        state.size = 2;
+        state.sizeUnit = 'inch';
+        state.dpi = 600;
+        state.ecc = 'H';
+        state.margin = 0.2;
+        state.marginUnit = 'inch';
+        state.moduleStyle = 'square';
+        state.eyeFrameStyle = 'square';
+        state.eyeballStyle = 'square';
+        state.fgColor = '#000000';
+        state.bgColor = '#FFFFFF';
+        state.transparentBg = false;
+        state.useGradient = false;
+        state.frameStyle = 'none';
+        state.frameTopText = '';
+        state.frameBottomText = '';
+        state.logoDataUrl = null;
+        state.logoIsSvg = false;
+        state.logoSvgRaw = null;
 
-            renderDynamicFields();
+        document.getElementById('input-qr-size').value = 2;
+        document.getElementById('select-size-unit').value = 'inch';
+        document.getElementById('select-dpi').value = '600';
+        document.getElementById('select-ecc').value = 'H';
+        document.getElementById('input-margin').value = 0.2;
+        document.getElementById('picker-fg-color').value = '#000000';
+        document.getElementById('text-fg-color').value = '#000000';
+        document.getElementById('picker-bg-color').value = '#FFFFFF';
+        document.getElementById('text-bg-color').value = '#FFFFFF';
+        document.getElementById('chk-transparent-bg').checked = false;
+        document.getElementById('chk-use-gradient').checked = false;
+        document.getElementById('gradient-options').classList.add('hidden');
+        removeLogoBtn.classList.add('hidden');
+
+        // Reset active type button highlighting
+        typeBtns.forEach(b => {
+            b.classList.remove('active', 'border-blue-600', 'bg-blue-50', 'dark:bg-blue-950/50', 'text-blue-600', 'dark:text-blue-400');
+            b.classList.add('border-slate-200', 'dark:border-slate-800', 'text-slate-600', 'dark:text-slate-400');
+        });
+        const defaultUrlBtn = document.querySelector('.type-btn[data-type="url"]');
+        if (defaultUrlBtn) {
+            defaultUrlBtn.classList.add('active', 'border-blue-600', 'bg-blue-50', 'dark:bg-blue-950/50', 'text-blue-600', 'dark:text-blue-400');
         }
+
+        renderDynamicFields();
     });
 
     // Initial render
