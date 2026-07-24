@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Pro Studio - Production-Grade Custom QR Code Generator</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="qrpro.ico">
+	<!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QR Code Generator Core Engine CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <!-- jsQR for live camera scanner decoding -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#2563eb',
+                            600: '#1d4ed8',
+                            700: '#1e40af',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+
+        /* Drag and Drop Hover */
+        .drop-zone--over {
+            border-color: #2563eb !important;
+            background-color: rgba(37, 99, 235, 0.05) !important;
+        }
+
+        /* Preview container canvas/svg sizing */
+        .preview-svg-container svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Print Mode Styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen">
+
+<div class="qr-app-container flex flex-col min-h-screen">
+    
+    <!-- HEADER NAVBAR -->
+    <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 py-3.5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                <i class="fa-solid fa-qrcode text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight tracking-tight text-slate-900 dark:text-white">QR Pro Studio</h1>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Production-Grade Custom Vector & Print Generator</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3">
+            <span id="session-badge" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                <i class="fa-solid fa-hashtag text-slate-400"></i>
+                <span id="session-id-display">0000</span>
+            </span>
+
+            <button id="btn-import-json" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-sm flex items-center gap-1.5" title="Import Settings JSON">
+                <i class="fa-solid fa-file-import"></i>
+                <span class="hidden md:inline text-xs font-medium">Import</span>
+            </button>
+            <input type="file" id="json-input" accept=".json" class="hidden">
+
+            <button id="btn-export-json" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-sm flex items-center gap-1.5" title="Export Settings JSON">
+                <i class="fa-solid fa-file-export"></i>
+                <span class="hidden md:inline text-xs font-medium">Save Preset</span>
+            </button>
+
+            <div class="h-4 w-px bg-slate-200 dark:bg-slate-800 my-auto"></div>
+
+            <button id="theme-toggle" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Toggle Dark/Light Mode">
+                <i class="fa-solid fa-moon dark:hidden text-lg"></i>
+                <i class="fa-solid fa-sun hidden dark:block text-amber-400 text-lg"></i>
+            </button>
+
+            <button id="btn-reset-engine" class="px-3 py-1.5 bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-lg text-xs font-semibold transition-colors border border-rose-200 dark:border-rose-900/50 flex items-center gap-1.5">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span class="hidden sm:inline">Reset</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE CONTAINER -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-4 lg:p-6 max-w-[1700px] w-full mx-auto">
+        
+        <!-- LEFT CONTROL PANEL (Cols 1-7) -->
+        <section class="lg:col-span-7 flex flex-col gap-5 overflow-y-auto pr-0 lg:pr-2">
+            
+            <!-- SECTION 1: QR DATA TYPE SELECTOR & DYNAMIC INPUTS -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-database text-blue-500"></i> 1. Content & Data Type
+                    </h2>
+                    <span id="data-length-badge" class="text-xs font-mono text-slate-400">0 chars</span>
+                </div>
+
+                <!-- Data Type Selection Grid -->
+                <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2 mb-4">
+                    <button class="type-btn active px-2 py-2 rounded-xl border text-xs font-medium flex flex-col items-center gap-1 transition-all border-blue-600 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400" data-type="url">
+                        <i class="fa-solid fa-link text-base"></i> URL
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="text">
+                        <i class="fa-solid fa-align-left text-base"></i> Text
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="wifi">
+                        <i class="fa-solid fa-wifi text-base"></i> WiFi
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="vcard">
+                        <i class="fa-solid fa-address-card text-base"></i> vCard
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="email">
+                        <i class="fa-solid fa-envelope text-base"></i> Email
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="phone">
+                        <i class="fa-solid fa-phone text-base"></i> Phone
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="sms">
+                        <i class="fa-solid fa-comment-sms text-base"></i> SMS
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="whatsapp">
+                        <i class="fa-brands fa-whatsapp text-base"></i> WhatsApp
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="location">
+                        <i class="fa-solid fa-location-dot text-base"></i> Geo
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="event">
+                        <i class="fa-solid fa-calendar-days text-base"></i> Event
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="crypto">
+                        <i class="fa-brands fa-bitcoin text-base"></i> Crypto
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="social">
+                        <i class="fa-solid fa-share-nodes text-base"></i> Social
+                    </button>
+                    <button class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="raw">
+                        <i class="fa-solid fa-code text-base"></i> Raw
+                    </button>
+                </div>
+
+                <!-- Dynamic Input Container -->
+                <div id="dynamic-fields-container" class="space-y-3 pt-2">
+                    <!-- Dynamic fields rendered here via JS -->
+                </div>
+            </div>
+
+            <!-- SECTION 2: PRINT RESOLUTION & SIZE SYSTEM -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-ruler-combined text-emerald-500"></i> 2. Dimensions & Print Quality
+                </h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">QR Size (Square)</label>
+                        <input type="number" id="input-qr-size" value="2" step="0.1" min="0.1" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Size Unit</label>
+                        <select id="select-size-unit" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="inch" selected>Inches (in)</option>
+                            <option value="cm">Centimeters (cm)</option>
+                            <option value="mm">Millimeters (mm)</option>
+                            <option value="px">Pixels (px)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Export DPI</label>
+                        <select id="select-dpi" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="72">72 DPI (Web)</option>
+                            <option value="150">150 DPI (Draft Print)</option>
+                            <option value="300">300 DPI (Standard Print)</option>
+                            <option value="600" selected>600 DPI (Ultra HD Print)</option>
+                            <option value="1200">1200 DPI (Offset Press)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Error Correction (ECC)</label>
+                        <select id="select-ecc" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="L">L (7% Recovery)</option>
+                            <option value="M">M (15% Recovery)</option>
+                            <option value="Q">Q (25% Recovery)</option>
+                            <option value="H" selected>H (30% Recovery - Recommended)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Quiet Zone / Margin Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Quiet Zone / Margin</label>
+                        <input type="number" id="input-margin" value="0.2" step="0.05" min="0" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Margin Unit</label>
+                        <select id="select-margin-unit" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="inch" selected>Inches (in)</option>
+                            <option value="cm">Centimeters (cm)</option>
+                            <option value="mm">Millimeters (mm)</option>
+                            <option value="px">Pixels (px)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: MODULE & EYE DESIGN CUSTOMIZATION -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-shapes text-purple-500"></i> 3. Module & Corner Styles
+                </h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Module Body Style -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Data Module Style</label>
+                        <select id="select-module-style" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="square" selected>Square (Classic)</option>
+                            <option value="dots">Dots / Circle</option>
+                            <option value="rounded">Rounded</option>
+                            <option value="extra-rounded">Extra Rounded</option>
+                            <option value="classy">Classy Diamond</option>
+                        </select>
+                    </div>
+
+                    <!-- Outer Eye Frame Style -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Corner Eye Frame</label>
+                        <select id="select-eye-frame-style" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="square" selected>Square Frame</option>
+                            <option value="circle">Circle Frame</option>
+                            <option value="extra-rounded">Rounded Frame</option>
+                        </select>
+                    </div>
+
+                    <!-- Inner Eyeball Style -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Corner Eyeball</label>
+                        <select id="select-eyeball-style" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="square" selected>Square Eyeball</option>
+                            <option value="circle">Circle Eyeball</option>
+                            <option value="dot">Dot Eyeball</option>
+                            <option value="diamond">Diamond Eyeball</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: COLORS & GRADIENTS -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-palette text-pink-500"></i> 4. Color & Gradient Controls
+                </h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Foreground Color</label>
+                        <div class="flex items-center gap-2">
+                            <input type="color" id="picker-fg-color" value="#000000" class="w-10 h-10 rounded-xl cursor-pointer border border-slate-200 dark:border-slate-700 bg-transparent p-0.5">
+                            <input type="text" id="text-fg-color" value="#000000" class="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono uppercase focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Background Color</label>
+                        <div class="flex items-center gap-2">
+                            <input type="color" id="picker-bg-color" value="#FFFFFF" class="w-10 h-10 rounded-xl cursor-pointer border border-slate-200 dark:border-slate-700 bg-transparent p-0.5">
+                            <input type="text" id="text-bg-color" value="#FFFFFF" class="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono uppercase focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center pt-5">
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="chk-transparent-bg" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300 dark:border-slate-700">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Transparent Background</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Gradient Controls -->
+                <div class="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800/80 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="chk-use-gradient" class="w-4 h-4 text-pink-600 rounded focus:ring-pink-500 border-slate-300 dark:border-slate-700">
+                            <span class="text-xs font-bold text-slate-800 dark:text-slate-200">Enable Foreground Gradient</span>
+                        </label>
+                    </div>
+
+                    <div id="gradient-options" class="grid grid-cols-1 sm:grid-cols-3 gap-3 hidden pt-1">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Gradient Type</label>
+                            <select id="select-gradient-type" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs">
+                                <option value="linear" selected>Linear Gradient</option>
+                                <option value="radial">Radial Gradient</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">End Color</label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="color" id="picker-grad-end-color" value="#2563eb" class="w-7 h-7 rounded-lg cursor-pointer bg-transparent border-0">
+                                <input type="text" id="text-grad-end-color" value="#2563eb" class="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-mono uppercase">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Angle (Linear)</label>
+                            <input type="number" id="input-grad-angle" value="45" min="0" max="360" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 5: OUTER CUSTOM FRAMES -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-crop-simple text-amber-500"></i> 5. Outer Printable Frames
+                </h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Frame Style</label>
+                        <select id="select-frame-style" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm">
+                            <option value="none" selected>None (Clean QR)</option>
+                            <option value="simple">Simple Border</option>
+                            <option value="rounded">Rounded Card</option>
+                            <option value="badge">Badge Frame</option>
+                            <option value="scan-me">"SCAN ME" Banner</option>
+                            <option value="coupon">Coupon Border</option>
+                            <option value="poster">Poster Card</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Border Thickness (px)</label>
+                        <input type="number" id="input-frame-border-width" value="4" min="1" max="20" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Frame Border Color</label>
+                        <div class="flex items-center gap-2">
+                            <input type="color" id="picker-frame-color" value="#1e293b" class="w-10 h-10 rounded-xl cursor-pointer bg-transparent border border-slate-200 dark:border-slate-700 p-0.5">
+                            <input type="text" id="text-frame-color" value="#1e293b" class="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono uppercase">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="frame-text-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Top Frame Text</label>
+                        <input type="text" id="input-frame-top-text" placeholder="e.g. SCAN TO CONNECT" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Bottom Frame Text</label>
+                        <input type="text" id="input-frame-bottom-text" placeholder="e.g. SCAN ME" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 6: CUSTOM LOGO INTEGRATION -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-image text-cyan-500"></i> 6. Vector-Safe Logo Integration
+                    </h2>
+                    <button id="btn-remove-logo" class="hidden text-xs text-rose-500 hover:underline font-semibold">Remove Logo</button>
+                </div>
+
+                <!-- Drag and Drop Dropzone -->
+                <div id="logo-dropzone" class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-6 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors mb-4">
+                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
+                    <p class="text-xs font-semibold text-slate-700 dark:text-slate-300">Drag & Drop SVG, PNG, or JPG Logo Here</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Files are embedded inlined/base64 directly inside vector export</p>
+                    <input type="file" id="logo-file-input" accept="image/png, image/jpeg, image/svg+xml" class="hidden">
+                </div>
+
+                <!-- Logo Settings Controls -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Logo Size</label>
+                            <span id="logo-size-val" class="text-xs font-mono text-slate-400">15%</span>
+                        </div>
+                        <input type="range" id="range-logo-size" min="5" max="35" value="15" class="w-full accent-blue-600">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Logo Margin/Padding</label>
+                            <span id="logo-padding-val" class="text-xs font-mono text-slate-400">4px</span>
+                        </div>
+                        <input type="range" id="range-logo-padding" min="0" max="15" value="4" class="w-full accent-blue-600">
+                    </div>
+
+                    <div class="flex items-center pt-4">
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="chk-logo-bg-mask" checked class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300 dark:border-slate-700">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Background Mask</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="logo-warning" class="hidden mt-3 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500 text-base"></i>
+                    <span>Logo size is greater than 30%. Test scan reliability carefully or switch ECC to High (H).</span>
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- RIGHT LIVE PREVIEW & EXPORT PANEL (Cols 8-12) -->
+        <section class="lg:col-span-5 flex flex-col gap-5 sticky top-20 h-fit">
+            
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col items-center">
+                
+                <div class="w-full flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-eye text-blue-500"></i> Vector Live Preview
+                    </h2>
+                    
+                    <span id="safety-badge" class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 flex items-center gap-1">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span>Optimal Density</span>
+                    </span>
+                </div>
+
+                <!-- Interactive Preview Box -->
+                <div class="w-full aspect-square max-w-[380px] bg-slate-100 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-center relative overflow-hidden group shadow-inner">
+                    <!-- SVG Live Preview Target Container -->
+                    <div id="preview-svg-wrapper" class="w-full h-full flex items-center justify-center transition-transform duration-200">
+                        <!-- Rendered SVG lives here -->
+                    </div>
+
+                    <!-- Hidden Canvas Engine used for High-DPI PNG/JPG generation -->
+                    <canvas id="export-canvas" class="hidden"></canvas>
+                </div>
+
+                <!-- Realtime Calculation Meta Stats -->
+                <div class="w-full grid grid-cols-3 gap-2 mt-4 text-center">
+                    <div class="p-2 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <span class="block text-[10px] text-slate-400 uppercase tracking-wider">Canvas Res</span>
+                        <span id="meta-resolution" class="text-xs font-bold font-mono text-slate-700 dark:text-slate-300">1200 x 1200 px</span>
+                    </div>
+                    <div class="p-2 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <span class="block text-[10px] text-slate-400 uppercase tracking-wider">QR Matrix</span>
+                        <span id="meta-matrix" class="text-xs font-bold font-mono text-slate-700 dark:text-slate-300">29 x 29</span>
+                    </div>
+                    <div class="p-2 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <span class="block text-[10px] text-slate-400 uppercase tracking-wider">Print Size</span>
+                        <span id="meta-physical" class="text-xs font-bold font-mono text-slate-700 dark:text-slate-300">2.0 x 2.0 in</span>
+                    </div>
+                </div>
+
+                <!-- EXPORT BUTTONS ROW -->
+                <div class="w-full space-y-2.5 mt-5">
+                    <button id="btn-export-svg" class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 transition-all text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-vector"></i> Download Vector SVG (Lossless HQ)
+                    </button>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-export-png" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-file-image text-emerald-400"></i> Download PNG (600 DPI)
+                        </button>
+                        <button id="btn-export-jpg" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-file-image text-amber-400"></i> Download JPG (600 DPI)
+                        </button>
+                    </div>
+
+                    <!-- Utility Buttons -->
+                    <div class="grid grid-cols-3 gap-2 pt-1">
+                        <button id="btn-copy-base64" class="py-2 px-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-lg text-xs transition-colors flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-copy"></i> Base64
+                        </button>
+                        <button id="btn-open-camera" class="py-2 px-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-lg text-xs transition-colors flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-camera"></i> Scan Test
+                        </button>
+                        <button id="btn-trigger-print" class="py-2 px-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-lg text-xs transition-colors flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-print"></i> Print
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<!-- MODAL: CAMERA SCANNER TEST -->
+<div id="camera-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col items-center">
+        <div class="w-full flex justify-between items-center mb-4">
+            <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i class="fa-solid fa-camera text-blue-500"></i> Live Camera Scan Validator
+            </h3>
+            <button id="btn-close-camera" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="relative w-full aspect-square bg-black rounded-xl overflow-hidden mb-4">
+            <video id="camera-video" class="w-full h-full object-cover"></video>
+            <div class="absolute inset-0 border-2 border-dashed border-blue-500/70 m-12 rounded-xl pointer-events-none flex items-center justify-center">
+                <div class="w-full h-0.5 bg-blue-500 animate-pulse"></div>
+            </div>
+        </div>
+
+        <div id="camera-scan-result" class="w-full p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-mono break-all text-slate-700 dark:text-slate-300 min-h-[40px] flex items-center justify-center text-center">
+            Point camera at screen or printed QR...
+        </div>
+    </div>
+</div>
+
+<!-- HIDDEN PRINT CONTAINER -->
+<div id="print-area" class="hidden">
+    <!-- SVG rendered here during print -->
+</div>
+
+<script>
+/* ==========================================================================
+   PRODUCTION QR GENERATOR CORE JS ENGINE
+   ========================================================================== */
+
+// Global Application State Object
+const state = {
+    dataType: 'url',
+    dataValues: {},
+    size: 2,
+    sizeUnit: 'inch', // 'inch', 'cm', 'mm', 'px'
+    dpi: 600,
+    ecc: 'H',
+    margin: 0.2,
+    marginUnit: 'inch',
+    moduleStyle: 'square', // 'square', 'dots', 'rounded', 'extra-rounded', 'classy'
+    eyeFrameStyle: 'square', // 'square', 'circle', 'extra-rounded'
+    eyeballStyle: 'square', // 'square', 'circle', 'dot', 'diamond'
+    fgColor: '#000000',
+    bgColor: '#FFFFFF',
+    transparentBg: false,
+    useGradient: false,
+    gradientType: 'linear',
+    gradEndColor: '#2563eb',
+    gradAngle: 45,
+    frameStyle: 'none', // 'none', 'simple', 'rounded', 'badge', 'scan-me', 'coupon', 'poster'
+    frameBorderWidth: 4,
+    frameColor: '#1e293b',
+    frameTopText: '',
+    frameBottomText: '',
+    logoDataUrl: null, // Base64 or inline SVG string
+    logoIsSvg: false,
+    logoSvgRaw: null,
+    logoSize: 15, // Percentage
+    logoPadding: 4,
+    logoBgMask: true,
+    theme: 'light'
+};
+
+// Session Identifiers (Mandatory session rules)
+const SESSION_ID = Math.floor(1000 + Math.random() * 9000).toString();
+const NOW = new Date();
+const DD = String(NOW.getDate()).padStart(2, '0');
+const MM = String(NOW.getMonth() + 1).padStart(2, '0');
+const YY = String(NOW.getFullYear()).slice(-2);
+const DATE_STR = `${DD}${MM}${YY}`;
+
+// Unit Conversions
+function convertToPixels(val, unit, dpi) {
+    const num = parseFloat(val) || 0;
+    switch (unit) {
+        case 'inch': return num * dpi;
+        case 'cm': return (num / 2.54) * dpi;
+        case 'mm': return (num / 25.4) * dpi;
+        case 'px': return num;
+        default: return num * dpi;
+    }
+}
+
+function convertToInches(val, unit) {
+    const num = parseFloat(val) || 0;
+    switch (unit) {
+        case 'inch': return num;
+        case 'cm': return num / 2.54;
+        case 'mm': return num / 25.4;
+        case 'px': return num / state.dpi;
+        default: return num;
+    }
+}
+
+// Format Filename as required: QR_<DataTypeName>_<ddmmyy>_<XXXX>.<ext>
+function getExportFilename(ext) {
+    const typeStr = state.dataType.toUpperCase();
+    return `QR_${typeStr}_${DATE_STR}_${SESSION_ID}.${ext}`;
+}
+
+// Dynamic Fields Definition for Data Types
+const DATA_TYPE_FIELDS = {
+    url: [
+        { id: 'url', label: 'Website URL', type: 'url', placeholder: 'https://example.com' }
+    ],
+    text: [
+        { id: 'text', label: 'Plain Text', type: 'textarea', placeholder: 'Enter your message or text content here...' }
+    ],
+    wifi: [
+        { id: 'ssid', label: 'Network Name (SSID)', type: 'text', placeholder: 'MyHomeWiFi' },
+        { id: 'password', label: 'Password', type: 'password', placeholder: 'WiFi Password' },
+        { id: 'encryption', label: 'Encryption', type: 'select', options: ['WPA', 'WEP', 'nopass'] }
+    ],
+    vcard: [
+        { id: 'fn', label: 'Full Name', type: 'text', placeholder: 'Jane Doe' },
+        { id: 'org', label: 'Organization', type: 'text', placeholder: 'Acme Corp' },
+        { id: 'title', label: 'Job Title', type: 'text', placeholder: 'Senior Designer' },
+        { id: 'phone', label: 'Phone', type: 'tel', placeholder: '+1 555 019 2831' },
+        { id: 'email', label: 'Email', type: 'email', placeholder: 'jane@example.com' },
+        { id: 'url', label: 'Website', type: 'url', placeholder: 'https://example.com' }
+    ],
+    email: [
+        { id: 'email', label: 'Recipient Email', type: 'email', placeholder: 'target@example.com' },
+        { id: 'subject', label: 'Subject', type: 'text', placeholder: 'Inquiry regarding services' },
+        { id: 'body', label: 'Message Body', type: 'textarea', placeholder: 'Hello...' }
+    ],
+    phone: [
+        { id: 'phone', label: 'Phone Number', type: 'tel', placeholder: '+1 555 019 2831' }
+    ],
+    sms: [
+        { id: 'phone', label: 'Recipient Number', type: 'tel', placeholder: '+1 555 019 2831' },
+        { id: 'message', label: 'Message', type: 'textarea', placeholder: 'Text message content...' }
+    ],
+    whatsapp: [
+        { id: 'phone', label: 'WhatsApp Phone (with Country Code)', type: 'tel', placeholder: '15550192831' },
+        { id: 'message', label: 'Preset Message (Optional)', type: 'text', placeholder: 'Hello!' }
+    ],
+    location: [
+        { id: 'lat', label: 'Latitude', type: 'text', placeholder: '37.7749' },
+        { id: 'lng', label: 'Longitude', type: 'text', placeholder: '-122.4194' }
+    ],
+    event: [
+        { id: 'title', label: 'Event Title', type: 'text', placeholder: 'Annual Tech Summit' },
+        { id: 'location', label: 'Event Location', type: 'text', placeholder: 'Convention Center, San Francisco' },
+        { id: 'start', label: 'Start Time', type: 'datetime-local' },
+        { id: 'end', label: 'End Time', type: 'datetime-local' }
+    ],
+    crypto: [
+        { id: 'coin', label: 'Coin / Token', type: 'select', options: ['bitcoin', 'ethereum', 'solana', 'usdt'] },
+        { id: 'address', label: 'Wallet Address', type: 'text', placeholder: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa' },
+        { id: 'amount', label: 'Amount (Optional)', type: 'text', placeholder: '0.05' }
+    ],
+    social: [
+        { id: 'platform', label: 'Platform', type: 'select', options: ['instagram', 'twitter', 'linkedin', 'facebook', 'youtube', 'tiktok'] },
+        { id: 'handle', label: 'Username or URL', type: 'text', placeholder: 'username' }
+    ],
+    raw: [
+        { id: 'raw', label: 'Raw Payload String', type: 'textarea', placeholder: 'Raw QR data payload...' }
+    ]
+};
+
+// Format Payload Data String based on Type & Inputs
+function generatePayloadString() {
+    const type = state.dataType;
+    const vals = state.dataValues;
+
+    switch (type) {
+        case 'url':
+            return vals.url ? vals.url.trim() : '';
+        case 'text':
+            return vals.text || '';
+        case 'wifi':
+            if (!vals.ssid) return '';
+            const enc = vals.encryption || 'WPA';
+            const pwd = vals.password || '';
+            return `WIFI:S:${vals.ssid};T:${enc};P:${pwd};;`;
+        case 'vcard':
+            if (!vals.fn) return '';
+            return `BEGIN:VCARD\nVERSION:3.0\nN:${vals.fn}\nFN:${vals.fn}\nORG:${vals.org || ''}\nTITLE:${vals.title || ''}\nTEL:${vals.phone || ''}\nEMAIL:${vals.email || ''}\nURL:${vals.url || ''}\nEND:VCARD`;
+        case 'email':
+            if (!vals.email) return '';
+            return `mailto:${vals.email}?subject=${encodeURIComponent(vals.subject || '')}&body=${encodeURIComponent(vals.body || '')}`;
+        case 'phone':
+            return vals.phone ? `tel:${vals.phone.trim()}` : '';
+        case 'sms':
+            if (!vals.phone) return '';
+            return `smsto:${vals.phone.trim()}:${vals.message || ''}`;
+        case 'whatsapp':
+            if (!vals.phone) return '';
+            const cleanPhone = vals.phone.replace(/[^0-9]/g, '');
+            return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(vals.message || '')}`;
+        case 'location':
+            if (!vals.lat || !vals.lng) return '';
+            return `geo:${vals.lat.trim()},${vals.lng.trim()}`;
+        case 'event':
+            if (!vals.title) return '';
+            const fmtDate = (dStr) => dStr ? dStr.replace(/[^0-9]/g, '') + '00' : '';
+            return `BEGIN:VEVENT\nSUMMARY:${vals.title}\nLOCATION:${vals.location || ''}\nDTSTART:${fmtDate(vals.start)}\nDTEND:${fmtDate(vals.end)}\nEND:VEVENT`;
+        case 'crypto':
+            if (!vals.address) return '';
+            const coin = vals.coin || 'bitcoin';
+            const amtStr = vals.amount ? `?amount=${vals.amount}` : '';
+            return `${coin}:${vals.address}${amtStr}`;
+        case 'social':
+            if (!vals.handle) return '';
+            const h = vals.handle.trim();
+            if (h.startsWith('http')) return h;
+            switch (vals.platform) {
+                case 'twitter': return `https://x.com/${h}`;
+                case 'linkedin': return `https://linkedin.com/in/${h}`;
+                case 'facebook': return `https://facebook.com/${h}`;
+                case 'youtube': return `https://youtube.com/@${h}`;
+                case 'tiktok': return `https://tiktok.com/@${h}`;
+                default: return `https://instagram.com/${h}`;
+            }
+        case 'raw':
+            return vals.raw || '';
+        default:
+            return '';
+    }
+}
+
+// SVG Vector Generation Engine
+function generateQRCodeSVG() {
+    const payload = generatePayloadString();
+    
+    // Total physical size in pixels at current target DPI
+    const totalPx = convertToPixels(state.size, state.sizeUnit, state.dpi);
+    const marginPx = convertToPixels(state.margin, state.marginUnit, state.dpi);
+
+    // Standard baseline viewbox size for perfect vector scaling
+    const viewBoxSize = 1000; 
+    
+    if (!payload) {
+        // Return placeholder vector SVG when empty
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" width="${totalPx}" height="${totalPx}">
+            <rect width="100%" height="100%" fill="${state.transparentBg ? 'none' : state.bgColor}"/>
+            <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" fill="#94a3b8">Enter QR Payload Data</text>
+        </svg>`;
+    }
+
+    // Initialize QR matrix using qrcode generator CDN
+    let qrEngine;
+    try {
+        qrEngine = qrcode(0, state.ecc);
+        qrEngine.addData(payload);
+        qrEngine.make();
+    } catch (e) {
+        // Fallback if payload is too large for current ECC level
+        qrEngine = qrcode(0, 'L');
+        qrEngine.addData(payload);
+        qrEngine.make();
+    }
+
+    const moduleCount = qrEngine.getModuleCount();
+    
+    // Frame padding calculation
+    let framePaddingPx = 0;
+    if (state.frameStyle !== 'none') {
+        framePaddingPx = 40;
+    }
+
+    const qrAreaSize = viewBoxSize - (marginPx * 2 * (viewBoxSize / totalPx)) - (framePaddingPx * 2);
+    const cellSize = qrAreaSize / moduleCount;
+    const qrOffsetX = (viewBoxSize - (moduleCount * cellSize)) / 2;
+    const qrOffsetY = qrOffsetX;
+
+    // Build SVG Elements Buffer
+    let svgContent = '';
+
+    // Defs & Gradient definitions
+    let defsStr = '';
+    let fgStyle = state.fgColor;
+
+    if (state.useGradient) {
+        const gradId = `qr-grad-${SESSION_ID}`;
+        fgStyle = `url(#${gradId})`;
+        if (state.gradientType === 'radial') {
+            defsStr += `<radialGradient id="${gradId}" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="${state.fgColor}" />
+                <stop offset="100%" stop-color="${state.gradEndColor}" />
+            </radialGradient>`;
+        } else {
+            const angleRad = (state.gradAngle || 45) * (Math.PI / 180);
+            const x1 = Math.round(50 + Math.sin(angleRad) * 50);
+            const y1 = Math.round(50 - Math.cos(angleRad) * 50);
+            const x2 = Math.round(50 - Math.sin(angleRad) * 50);
+            const y2 = Math.round(50 + Math.cos(angleRad) * 50);
+            defsStr += `<linearGradient id="${gradId}" x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%">
+                <stop offset="0%" stop-color="${state.fgColor}" />
+                <stop offset="100%" stop-color="${state.gradEndColor}" />
+            </linearGradient>`;
+        }
+    }
+
+    if (defsStr) {
+        svgContent += `<defs>${defsStr}</defs>`;
+    }
+
+    // 1. Render Outer Frame Background & Border (if enabled)
+    if (!state.transparentBg) {
+        svgContent += `<rect width="100%" height="100%" fill="${state.bgColor}"/>`;
+    }
+
+    if (state.frameStyle !== 'none') {
+        const bWidth = state.frameBorderWidth * (viewBoxSize / 500);
+        const fColor = state.frameColor;
+
+        if (state.frameStyle === 'simple') {
+            svgContent += `<rect x="${bWidth/2}" y="${bWidth/2}" width="${viewBoxSize - bWidth}" height="${viewBoxSize - bWidth}" fill="none" stroke="${fColor}" stroke-width="${bWidth}"/>`;
+        } else if (state.frameStyle === 'rounded') {
+            svgContent += `<rect x="${bWidth/2}" y="${bWidth/2}" width="${viewBoxSize - bWidth}" height="${viewBoxSize - bWidth}" rx="40" fill="none" stroke="${fColor}" stroke-width="${bWidth}"/>`;
+        } else if (state.frameStyle === 'badge') {
+            svgContent += `<rect x="${bWidth/2}" y="${bWidth/2}" width="${viewBoxSize - bWidth}" height="${viewBoxSize - bWidth}" rx="80" fill="none" stroke="${fColor}" stroke-width="${bWidth}"/>`;
+        } else if (state.frameStyle === 'coupon') {
+            svgContent += `<rect x="${bWidth/2}" y="${bWidth/2}" width="${viewBoxSize - bWidth}" height="${viewBoxSize - bWidth}" fill="none" stroke="${fColor}" stroke-width="${bWidth}" stroke-dasharray="16,12"/>`;
+        } else if (state.frameStyle === 'scan-me' || state.frameStyle === 'poster') {
+            svgContent += `<rect x="${bWidth/2}" y="${bWidth/2}" width="${viewBoxSize - bWidth}" height="${viewBoxSize - bWidth}" rx="30" fill="none" stroke="${fColor}" stroke-width="${bWidth}"/>`;
+        }
+
+        // Top Frame Text
+        if (state.frameTopText) {
+            svgContent += `<text x="50%" y="${qrOffsetY - 15}" dominant-baseline="bottom" text-anchor="middle" font-family="Inter, sans-serif" font-weight="bold" font-size="28" fill="${fColor}">${escapeHtml(state.frameTopText)}</text>`;
+        }
+        // Bottom Frame Text
+        if (state.frameBottomText) {
+            svgContent += `<text x="50%" y="${qrOffsetY + (moduleCount * cellSize) + 35}" dominant-baseline="hanging" text-anchor="middle" font-family="Inter, sans-serif" font-weight="bold" font-size="28" fill="${fColor}">${escapeHtml(state.frameBottomText)}</text>`;
+        }
+    }
+
+    // Helper to check if row/col belongs to finder patterns
+    const isFinderPattern = (r, c) => {
+        if (r < 7 && c < 7) return true; // Top Left
+        if (r < 7 && c >= moduleCount - 7) return true; // Top Right
+        if (r >= moduleCount - 7 && c < 7) return true; // Bottom Left
+        return false;
+    };
+
+    // Calculate Central Logo Mask Bounds
+    let logoSizePx = 0;
+    let logoBounds = null;
+    if (state.logoDataUrl) {
+        logoSizePx = (moduleCount * cellSize) * (state.logoSize / 100);
+        
+        // MANDATORY CENTERING Math Logic:
+        // centerX = (qrSize - logoSize) / 2
+        // centerY = (qrSize - logoSize) / 2
+        const logoX = qrOffsetX + ((moduleCount * cellSize) - logoSizePx) / 2;
+        const logoY = qrOffsetY + ((moduleCount * cellSize) - logoSizePx) / 2;
+
+        logoBounds = {
+            x: logoX,
+            y: logoY,
+            size: logoSizePx,
+            padding: state.logoPadding * (viewBoxSize / 500)
+        };
+    }
+
+    // Module Path Generator
+    let modulesPathStr = '';
+
+    for (let r = 0; r < moduleCount; r++) {
+        for (let c = 0; c < moduleCount; c++) {
+            if (qrEngine.isDark(r, c)) {
+                if (isFinderPattern(r, c)) continue; // Handled separately with custom eyes
+
+                const x = qrOffsetX + c * cellSize;
+                const y = qrOffsetY + r * cellSize;
+
+                // Check if module is obscured by logo background mask
+                if (logoBounds && state.logoBgMask) {
+                    const pad = logoBounds.padding;
+                    if (x + cellSize >= logoBounds.x - pad &&
+                        x <= logoBounds.x + logoBounds.size + pad &&
+                        y + cellSize >= logoBounds.y - pad &&
+                        y <= logoBounds.y + logoBounds.size + pad) {
+                        continue; // Skip module under logo
+                    }
+                }
+
+                // Render custom data module shapes
+                if (state.moduleStyle === 'dots') {
+                    const cx = x + cellSize / 2;
+                    const cy = y + cellSize / 2;
+                    modulesPathStr += `M ${cx} ${cy} m -${cellSize*0.4}, 0 a ${cellSize*0.4},${cellSize*0.4} 0 1,0 ${cellSize*0.8},0 a ${cellSize*0.4},${cellSize*0.4} 0 1,0 -${cellSize*0.8},0 `;
+                } else if (state.moduleStyle === 'rounded') {
+                    const rad = cellSize * 0.3;
+                    modulesPathStr += `M ${x+rad} ${y} h ${cellSize-2*rad} a ${rad} ${rad} 0 0 1 ${rad} ${rad} v ${cellSize-2*rad} a ${rad} ${rad} 0 0 1 -${rad} ${rad} h -${cellSize-2*rad} a ${rad} ${rad} 0 0 1 -${rad} -${rad} v -${cellSize-2*rad} a ${rad} ${rad} 0 0 1 ${rad} -${rad} `;
+                } else if (state.moduleStyle === 'extra-rounded') {
+                    const rad = cellSize * 0.48;
+                    modulesPathStr += `M ${x+rad} ${y} h ${cellSize-2*rad} a ${rad} ${rad} 0 0 1 ${rad} ${rad} v ${cellSize-2*rad} a ${rad} ${rad} 0 0 1 -${rad} ${rad} h -${cellSize-2*rad} a ${rad} ${rad} 0 0 1 -${rad} -${rad} v -${cellSize-2*rad} a ${rad} ${rad} 0 0 1 ${rad} -${rad} `;
+                } else if (state.moduleStyle === 'classy') {
+                    modulesPathStr += `M ${x+cellSize/2} ${y} L ${x+cellSize} ${y+cellSize/2} L ${x+cellSize/2} ${y+cellSize} L ${x} ${y+cellSize/2} Z `;
+                } else {
+                    // Standard Square
+                    modulesPathStr += `M ${x} ${y} h ${cellSize} v ${cellSize} h -${cellSize} Z `;
+                }
+            }
+        }
+    }
+
+    svgContent += `<path d="${modulesPathStr}" fill="${fgStyle}"/>`;
+
+    // Helper to draw corner eye frames & eyeballs
+    const drawEye = (x, y) => {
+        const eyeSize = 7 * cellSize;
+        let eyeSvg = '';
+
+        // Outer Eye Frame
+        if (state.eyeFrameStyle === 'circle') {
+            const cx = x + eyeSize / 2;
+            const cy = y + eyeSize / 2;
+            const rOuter = eyeSize / 2;
+            const rInner = (5 * cellSize) / 2;
+            eyeSvg += `<path d="M ${cx} ${cy} m -${rOuter}, 0 a ${rOuter},${rOuter} 0 1,0 ${rOuter*2},0 a ${rOuter},${rOuter} 0 1,0 -${rOuter*2},0 M ${cx} ${cy} m -${rInner}, 0 a ${rInner},${rInner} 0 1,0 ${rInner*2},0 a ${rInner},${rInner} 0 1,0 -${rInner*2},0" fill="${fgStyle}" fill-rule="evenodd"/>`;
+        } else if (state.eyeFrameStyle === 'extra-rounded') {
+            const r = cellSize * 2;
+            eyeSvg += `<path d="M ${x+r} ${y} h ${eyeSize-2*r} a ${r} ${r} 0 0 1 ${r} ${r} v ${eyeSize-2*r} a ${r} ${r} 0 0 1 -${r} ${r} h -${eyeSize-2*r} a ${r} ${r} 0 0 1 -${r} -${r} v -${eyeSize-2*r} a ${r} ${r} 0 0 1 ${r} -${r} M ${x+cellSize+r/2} ${y+cellSize} h ${eyeSize-2*cellSize-r} a ${r/2} ${r/2} 0 0 1 ${r/2} ${r/2} v ${eyeSize-2*cellSize-r} a ${r/2} ${r/2} 0 0 1 -${r/2} ${r/2} h -${eyeSize-2*cellSize-r} a ${r/2} ${r/2} 0 0 1 -${r/2} -${r/2} v -${eyeSize-2*cellSize-r} a ${r/2} ${r/2} 0 0 1 ${r/2} -${r/2}" fill="${fgStyle}" fill-rule="evenodd"/>`;
+        } else {
+            // Square Frame
+            eyeSvg += `<path d="M ${x} ${y} h ${eyeSize} v ${eyeSize} h -${eyeSize} Z M ${x+cellSize} ${y+cellSize} v ${5*cellSize} h ${5*cellSize} v -${5*cellSize} Z" fill="${fgStyle}" fill-rule="evenodd"/>`;
+        }
+
+        // Inner Eyeball
+        const eX = x + 2 * cellSize;
+        const eY = y + 2 * cellSize;
+        const eSize = 3 * cellSize;
+
+        if (state.eyeballStyle === 'circle' || state.eyeballStyle === 'dot') {
+            const cx = eX + eSize / 2;
+            const cy = eY + eSize / 2;
+            const r = eSize / 2;
+            eyeSvg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fgStyle}"/>`;
+        } else if (state.eyeballStyle === 'diamond') {
+            eyeSvg += `<path d="M ${eX + eSize/2} ${eY} L ${eX + eSize} ${eY + eSize/2} L ${eX + eSize/2} ${eY + eSize} L ${eX} ${eY + eSize/2} Z" fill="${fgStyle}"/>`;
+        } else {
+            // Square eyeball
+            eyeSvg += `<rect x="${eX}" y="${eY}" width="${eSize}" height="${eSize}" fill="${fgStyle}"/>`;
+        }
+
+        return eyeSvg;
+    };
+
+    // Draw Top-Left Eye
+    svgContent += drawEye(qrOffsetX, qrOffsetY);
+    // Draw Top-Right Eye
+    svgContent += drawEye(qrOffsetX + (moduleCount - 7) * cellSize, qrOffsetY);
+    // Draw Bottom-Left Eye
+    svgContent += drawEye(qrOffsetX, qrOffsetY + (moduleCount - 7) * cellSize);
+
+    // Embed Central Logo (Strict Vector Safe Embed Rules)
+    if (logoBounds) {
+        // Render logo mask if enabled
+        if (state.logoBgMask) {
+            const p = logoBounds.padding;
+            svgContent += `<rect x="${logoBounds.x - p}" y="${logoBounds.y - p}" width="${logoBounds.size + p*2}" height="${logoBounds.size + p*2}" rx="8" fill="${state.bgColor}"/>`;
+        }
+
+        // Inline SVG or Base64 Image Embed
+        if (state.logoIsSvg && state.logoSvgRaw) {
+            // Clean & inline raw SVG string with absolute positioning and explicitly normalized viewBox
+            let cleanSvg = state.logoSvgRaw
+                .replace(/<\?xml.*\?>/gi, '')
+                .replace(/<!DOCTYPE font-awesome-code.*?>/gi, '')
+                .replace(/<svg/i, `<g transform="translate(${logoBounds.x}, ${logoBounds.y}) scale(${logoBounds.size / 100})"`);
+            cleanSvg = cleanSvg.replace(/<\/svg>/i, '</g>');
+            svgContent += cleanSvg;
+        } else if (state.logoDataUrl) {
+            // Base64 Raster Image Embed with dual href and xlink:href for Adobe Illustrator compatibility
+            svgContent += `<image href="${state.logoDataUrl}" xlink:href="${state.logoDataUrl}" x="${logoBounds.x}" y="${logoBounds.y}" width="${logoBounds.size}" height="${logoBounds.size}" preserveAspectRatio="xMidYMid meet"/>`;
+        }
+    }
+
+    // Assemble Full Valid Self-Contained SVG
+    return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" width="${totalPx}" height="${totalPx}">
+        ${svgContent}
+    </svg>`;
+}
+
+// Render Live Preview
+function updatePreview() {
+    const svgStr = generateQRCodeSVG();
+    const previewWrapper = document.getElementById('preview-svg-wrapper');
+    previewWrapper.innerHTML = svgStr;
+
+    // Update Meta Stats Display
+    const pxSize = Math.round(convertToPixels(state.size, state.sizeUnit, state.dpi));
+    document.getElementById('meta-resolution').innerText = `${pxSize} x ${pxSize} px`;
+    
+    // Matrix Size
+    const payload = generatePayloadString();
+    let count = 21;
+    if (payload) {
+        try {
+            const qr = qrcode(0, state.ecc);
+            qr.addData(payload);
+            qr.make();
+            count = qr.getModuleCount();
+        } catch(e) {}
+    }
+    document.getElementById('meta-matrix').innerText = `${count} x ${count}`;
+
+    // Physical Dimension
+    const inSize = convertToInches(state.size, state.sizeUnit).toFixed(2);
+    document.getElementById('meta-physical').innerText = `${inSize}" x ${inSize}"`;
+
+    // Data Length
+    document.getElementById('data-length-badge').innerText = `${payload.length} chars`;
+
+    // Logo Warning Indicator
+    const warnBox = document.getElementById('logo-warning');
+    if (state.logoDataUrl && state.logoSize > 30) {
+        warnBox.classList.remove('hidden');
+    } else {
+        warnBox.classList.add('hidden');
+    }
+}
+
+// Render Dynamic Fields
+function renderDynamicFields() {
+    const container = document.getElementById('dynamic-fields-container');
+    container.innerHTML = '';
+
+    const fields = DATA_TYPE_FIELDS[state.dataType] || [];
+
+    fields.forEach(field => {
+        const div = document.createElement('div');
+        const label = document.createElement('label');
+        label.className = 'block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1';
+        label.innerText = field.label;
+        div.appendChild(label);
+
+        let input;
+        if (field.type === 'textarea') {
+            input = document.createElement('textarea');
+            input.rows = 3;
+            input.className = 'w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+        } else if (field.type === 'select') {
+            input = document.createElement('select');
+            input.className = 'w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+            field.options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.innerText = opt.toUpperCase();
+                input.appendChild(option);
+            });
+        } else {
+            input = document.createElement('input');
+            input.type = field.type;
+            input.className = 'w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+        }
+
+        input.placeholder = field.placeholder || '';
+        input.value = state.dataValues[field.id] || '';
+
+        input.addEventListener('input', (e) => {
+            state.dataValues[field.id] = e.target.value;
+            updatePreview();
+        });
+
+        div.appendChild(input);
+        container.appendChild(div);
+    });
+
+    updatePreview();
+}
+
+// Download Handlers
+function downloadSVG() {
+    const svgStr = generateQRCodeSVG();
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = getExportFilename('svg');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function downloadRaster(format) {
+    const svgStr = generateQRCodeSVG();
+    const pxSize = Math.round(convertToPixels(state.size, state.sizeUnit, state.dpi));
+
+    const img = new Image();
+    const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    img.onload = () => {
+        const canvas = document.getElementById('export-canvas');
+        canvas.width = pxSize;
+        canvas.height = pxSize;
+        const ctx = canvas.getContext('2d');
+
+        if (format === 'jpeg' || !state.transparentBg) {
+            ctx.fillStyle = state.bgColor;
+            ctx.fillRect(0, 0, pxSize, pxSize);
+        } else {
+            ctx.clearRect(0, 0, pxSize, pxSize);
+        }
+
+        ctx.drawImage(img, 0, 0, pxSize, pxSize);
+        URL.revokeObjectURL(url);
+
+        const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+        const dataUrl = canvas.toDataURL(mime, 0.95);
+
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = getExportFilename(format === 'jpeg' ? 'jpg' : 'png');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
+
+    img.src = url;
+}
+
+// Camera Scan Test
+let videoStream = null;
+
+function openCameraModal() {
+    const modal = document.getElementById('camera-modal');
+    const video = document.getElementById('camera-video');
+    const resultBox = document.getElementById('camera-scan-result');
+
+    modal.classList.remove('hidden');
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+            videoStream = stream;
+            video.srcObject = stream;
+            video.setAttribute('playsinline', true);
+            video.play();
+            requestAnimationFrame(scanCameraFrame);
+        })
+        .catch(err => {
+            resultBox.innerText = 'Camera access denied or unavailable.';
+        });
+}
+
+function scanCameraFrame() {
+    const video = document.getElementById('camera-video');
+    const resultBox = document.getElementById('camera-scan-result');
+
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        if (window.jsQR) {
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code) {
+                resultBox.innerHTML = `<span class="text-emerald-500 font-bold">✓ SCANNED SUCCESSFULLY:</span><br>${escapeHtml(code.data)}`;
+            }
+        }
+    }
+
+    if (videoStream && !document.getElementById('camera-modal').classList.contains('hidden')) {
+        requestAnimationFrame(scanCameraFrame);
+    }
+}
+
+function closeCameraModal() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    document.getElementById('camera-modal').classList.add('hidden');
+}
+
+// Utility escape helper
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+    })[m]);
+}
+
+// DOM Initialization & Event Bindings
+document.addEventListener('DOMContentLoaded', () => {
+    // Session ID display
+    document.getElementById('session-id-display').innerText = SESSION_ID;
+
+    // Theme Toggle
+    const themeBtn = document.getElementById('theme-toggle');
+    themeBtn.addEventListener('click', () => {
+        const html = document.documentElement;
+        if (html.classList.contains('dark')) {
+            html.classList.remove('dark');
+            html.classList.add('light');
+            state.theme = 'light';
+        } else {
+            html.classList.remove('light');
+            html.classList.add('dark');
+            state.theme = 'dark';
+        }
+        localStorage.setItem('qr_theme', state.theme);
+    });
+
+    // Check localStorage theme
+    if (localStorage.getItem('qr_theme') === 'dark') {
+        document.documentElement.classList.remove('light');
+        document.documentElement.classList.add('dark');
+        state.theme = 'dark';
+    }
+
+    // Data Type Selector Buttons
+    const typeBtns = document.querySelectorAll('.type-btn');
+    typeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            typeBtns.forEach(b => {
+                b.classList.remove('active', 'border-blue-600', 'bg-blue-50', 'dark:bg-blue-950/50', 'text-blue-600', 'dark:text-blue-400');
+                b.classList.add('border-slate-200', 'dark:border-slate-800', 'text-slate-600', 'dark:text-slate-400');
+            });
+            btn.classList.add('active', 'border-blue-600', 'bg-blue-50', 'dark:bg-blue-950/50', 'text-blue-600', 'dark:text-blue-400');
+            btn.classList.remove('border-slate-200', 'dark:border-slate-800', 'text-slate-600', 'dark:text-slate-400');
+
+            state.dataType = btn.dataset.type;
+            state.dataValues = {};
+            renderDynamicFields();
+        });
+    });
+
+    // Dimension Inputs
+    document.getElementById('input-qr-size').addEventListener('input', e => {
+        state.size = parseFloat(e.target.value) || 1;
+        updatePreview();
+    });
+    document.getElementById('select-size-unit').addEventListener('change', e => {
+        state.sizeUnit = e.target.value;
+        updatePreview();
+    });
+    document.getElementById('select-dpi').addEventListener('change', e => {
+        state.dpi = parseInt(e.target.value);
+        updatePreview();
+    });
+    document.getElementById('select-ecc').addEventListener('change', e => {
+        state.ecc = e.target.value;
+        updatePreview();
+    });
+    document.getElementById('input-margin').addEventListener('input', e => {
+        state.margin = parseFloat(e.target.value) || 0;
+        updatePreview();
+    });
+    document.getElementById('select-margin-unit').addEventListener('change', e => {
+        state.marginUnit = e.target.value;
+        updatePreview();
+    });
+
+    // Module & Eye Styles
+    document.getElementById('select-module-style').addEventListener('change', e => {
+        state.moduleStyle = e.target.value;
+        updatePreview();
+    });
+    document.getElementById('select-eye-frame-style').addEventListener('change', e => {
+        state.eyeFrameStyle = e.target.value;
+        updatePreview();
+    });
+    document.getElementById('select-eyeball-style').addEventListener('change', e => {
+        state.eyeballStyle = e.target.value;
+        updatePreview();
+    });
+
+    // Color Pickers
+    const fgPick = document.getElementById('picker-fg-color');
+    const fgText = document.getElementById('text-fg-color');
+    fgPick.addEventListener('input', e => { fgText.value = e.target.value; state.fgColor = e.target.value; updatePreview(); });
+    fgText.addEventListener('input', e => { fgPick.value = e.target.value; state.fgColor = e.target.value; updatePreview(); });
+
+    const bgPick = document.getElementById('picker-bg-color');
+    const bgText = document.getElementById('text-bg-color');
+    bgPick.addEventListener('input', e => { bgText.value = e.target.value; state.bgColor = e.target.value; updatePreview(); });
+    bgText.addEventListener('input', e => { bgPick.value = e.target.value; state.bgColor = e.target.value; updatePreview(); });
+
+    document.getElementById('chk-transparent-bg').addEventListener('change', e => {
+        state.transparentBg = e.target.checked;
+        updatePreview();
+    });
+
+    // Gradient Controls
+    const chkGrad = document.getElementById('chk-use-gradient');
+    const gradOpts = document.getElementById('gradient-options');
+    chkGrad.addEventListener('change', e => {
+        state.useGradient = e.target.checked;
+        gradOpts.classList.toggle('hidden', !e.target.checked);
+        updatePreview();
+    });
+
+    document.getElementById('select-gradient-type').addEventListener('change', e => {
+        state.gradientType = e.target.value;
+        updatePreview();
+    });
+
+    const gradEndPick = document.getElementById('picker-grad-end-color');
+    const gradEndText = document.getElementById('text-grad-end-color');
+    gradEndPick.addEventListener('input', e => { gradEndText.value = e.target.value; state.gradEndColor = e.target.value; updatePreview(); });
+    gradEndText.addEventListener('input', e => { gradEndPick.value = e.target.value; state.gradEndColor = e.target.value; updatePreview(); });
+
+    document.getElementById('input-grad-angle').addEventListener('input', e => {
+        state.gradAngle = parseInt(e.target.value) || 0;
+        updatePreview();
+    });
+
+    // Outer Frame Controls
+    document.getElementById('select-frame-style').addEventListener('change', e => {
+        state.frameStyle = e.target.value;
+        updatePreview();
+    });
+    document.getElementById('input-frame-border-width').addEventListener('input', e => {
+        state.frameBorderWidth = parseInt(e.target.value) || 1;
+        updatePreview();
+    });
+
+    const framePick = document.getElementById('picker-frame-color');
+    const frameText = document.getElementById('text-frame-color');
+    framePick.addEventListener('input', e => { frameText.value = e.target.value; state.frameColor = e.target.value; updatePreview(); });
+    frameText.addEventListener('input', e => { framePick.value = e.target.value; state.frameColor = e.target.value; updatePreview(); });
+
+    document.getElementById('input-frame-top-text').addEventListener('input', e => {
+        state.frameTopText = e.target.value;
+        updatePreview();
+    });
+    document.getElementById('input-frame-bottom-text').addEventListener('input', e => {
+        state.frameBottomText = e.target.value;
+        updatePreview();
+    });
+
+    // Logo Upload Logic
+    const dropzone = document.getElementById('logo-dropzone');
+    const fileInput = document.getElementById('logo-file-input');
+    const removeLogoBtn = document.getElementById('btn-remove-logo');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    dropzone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropzone.classList.add('drop-zone--over');
+    });
+    ['dragleave', 'dragend'].forEach(type => {
+        dropzone.addEventListener(type, () => dropzone.classList.remove('drop-zone--over'));
+    });
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('drop-zone--over');
+        if (e.dataTransfer.files.length) {
+            handleLogoFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', e => {
+        if (e.target.files.length) handleLogoFile(e.target.files[0]);
+    });
+
+    function handleLogoFile(file) {
+        // Enforce ECC = H auto rule
+        state.ecc = 'H';
+        document.getElementById('select-ecc').value = 'H';
+
+        if (file.type === 'image/svg+xml') {
+            state.logoIsSvg = true;
+            const reader = new FileReader();
+            reader.onload = e => {
+                state.logoSvgRaw = e.target.result;
+                state.logoDataUrl = 'data:image/svg+xml;base64,' + btoa(e.target.result);
+                removeLogoBtn.classList.remove('hidden');
+                updatePreview();
+            };
+            reader.readAsText(file);
+        } else {
+            state.logoIsSvg = false;
+            const reader = new FileReader();
+            reader.onload = e => {
+                state.logoDataUrl = e.target.result;
+                removeLogoBtn.classList.remove('hidden');
+                updatePreview();
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    removeLogoBtn.addEventListener('click', () => {
+        state.logoDataUrl = null;
+        state.logoIsSvg = false;
+        state.logoSvgRaw = null;
+        fileInput.value = '';
+        removeLogoBtn.classList.add('hidden');
+        updatePreview();
+    });
+
+    document.getElementById('range-logo-size').addEventListener('input', e => {
+        state.logoSize = parseInt(e.target.value);
+        document.getElementById('logo-size-val').innerText = `${state.logoSize}%`;
+        updatePreview();
+    });
+
+    document.getElementById('range-logo-padding').addEventListener('input', e => {
+        state.logoPadding = parseInt(e.target.value);
+        document.getElementById('logo-padding-val').innerText = `${state.logoPadding}px`;
+        updatePreview();
+    });
+
+    document.getElementById('chk-logo-bg-mask').addEventListener('change', e => {
+        state.logoBgMask = e.target.checked;
+        updatePreview();
+    });
+
+    // Download Buttons
+    document.getElementById('btn-export-svg').addEventListener('click', downloadSVG);
+    document.getElementById('btn-export-png').addEventListener('click', () => downloadRaster('png'));
+    document.getElementById('btn-export-jpg').addEventListener('click', () => downloadRaster('jpeg'));
+
+    // Copy Base64
+    document.getElementById('btn-copy-base64').addEventListener('click', () => {
+        const svgStr = generateQRCodeSVG();
+        const b64 = 'data:image/svg+xml;base64,' + btoa(svgStr);
+        
+        // Clipboard fallback as specified
+        const tx = document.createElement('textarea');
+        tx.value = b64;
+        document.body.appendChild(tx);
+        tx.select();
+        document.execCommand('copy');
+        document.body.removeChild(tx);
+
+        alert('Base64 String Copied to Clipboard!');
+    });
+
+    // Camera Modal
+    document.getElementById('btn-open-camera').addEventListener('click', openCameraModal);
+    document.getElementById('btn-close-camera').addEventListener('click', closeCameraModal);
+
+    // Print Button
+    document.getElementById('btn-trigger-print').addEventListener('click', () => {
+        const printArea = document.getElementById('print-area');
+        printArea.innerHTML = generateQRCodeSVG();
+        printArea.classList.remove('hidden');
+        window.print();
+        printArea.classList.add('hidden');
+    });
+
+    // JSON Import / Export Preset Configuration
+    document.getElementById('btn-export-json').addEventListener('click', () => {
+        const jsonStr = JSON.stringify(state, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `QR_Preset_${SESSION_ID}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    });
+
+    const jsonInput = document.getElementById('json-input');
+    document.getElementById('btn-import-json').addEventListener('click', () => jsonInput.click());
+    jsonInput.addEventListener('change', e => {
+        if (!e.target.files.length) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try {
+                const loaded = JSON.parse(ev.target.result);
+                Object.assign(state, loaded);
+                renderDynamicFields();
+                updatePreview();
+            } catch(err) {
+                alert('Invalid JSON Preset File');
+            }
+        };
+        reader.readAsText(e.target.files[0]);
+    });
+
+    // Reset Engine
+    document.getElementById('btn-reset-engine').addEventListener('click', () => {
+        if (confirm('Are you sure you want to reset all QR code settings?')) {
+            state.dataType = 'url';
+            state.dataValues = {};
+            state.size = 2;
+            state.sizeUnit = 'inch';
+            state.dpi = 600;
+            state.ecc = 'H';
+            state.margin = 0.2;
+            state.marginUnit = 'inch';
+            state.moduleStyle = 'square';
+            state.eyeFrameStyle = 'square';
+            state.eyeballStyle = 'square';
+            state.fgColor = '#000000';
+            state.bgColor = '#FFFFFF';
+            state.transparentBg = false;
+            state.useGradient = false;
+            state.frameStyle = 'none';
+            state.frameTopText = '';
+            state.frameBottomText = '';
+            state.logoDataUrl = null;
+            state.logoIsSvg = false;
+            state.logoSvgRaw = null;
+
+            document.getElementById('input-qr-size').value = 2;
+            document.getElementById('select-size-unit').value = 'inch';
+            document.getElementById('select-dpi').value = '600';
+            document.getElementById('select-ecc').value = 'H';
+            document.getElementById('input-margin').value = 0.2;
+            document.getElementById('picker-fg-color').value = '#000000';
+            document.getElementById('text-fg-color').value = '#000000';
+            document.getElementById('picker-bg-color').value = '#FFFFFF';
+            document.getElementById('text-bg-color').value = '#FFFFFF';
+            document.getElementById('chk-transparent-bg').checked = false;
+            document.getElementById('chk-use-gradient').checked = false;
+            document.getElementById('gradient-options').classList.add('hidden');
+            removeLogoBtn.classList.add('hidden');
+
+            renderDynamicFields();
+        }
+    });
+
+    // Initial render
+    renderDynamicFields();
+});
+</script>
+</body>
+</html>
