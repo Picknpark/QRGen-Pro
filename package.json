@@ -1,0 +1,15 @@
+{
+  "name": "qr-pro-studio",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Production-ready QR code generator with dynamic QR management and analytics.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.0"
+  }
+}
