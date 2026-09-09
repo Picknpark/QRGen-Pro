@@ -1,64 +1,29 @@
 # QR Pro Studio
 
-Compact client-side QR generator with dynamic QR redirects, scan analytics, batch generation, printable sheets, shareable presets, PDF/WebP export, and PWA support.
+A browser-based QR code generator for creating, validating, customizing, exporting, and printing QR codes.
 
-## Local development
+## Deploy
+
+This is a static project. Upload the folder to GitHub and import the repository into Vercel. No server, database, environment variables, or build command is required.
+
+`vercel.json` enables clean URLs: `.html` extensions are removed and trailing slashes are avoided. Vercel can serve `index.html` directly. All QR generation, validation, settings export/import, camera scanning, batch generation, and printable sheets run in the browser.
+
+## Run locally
+
+Open `index.html` in a browser, or use any static file server from the project folder:
 
 ```bash
-npm install
-npm start
+python3 -m http.server 4173
 ```
 
-Open `http://localhost:4173`.
+Then open `http://localhost:4173`.
 
-Local `server.js` uses `data/db.json` as a development fallback. That file is intentionally ignored by Git. The Vercel deployment uses the serverless functions in `api/` and Neon Postgres instead.
+## Content types
 
-## Deploy with Vercel and Neon
+The generator supports URL, text, Wi-Fi, vCard, email, phone, SMS, WhatsApp, geographic coordinates, calendar events, crypto wallets, social profiles, maps, payments, app downloads, meeting links, coupons, reviews, and raw payloads.
 
-1. Create a Neon project and copy its pooled connection string.
-2. Push this project to GitHub.
-3. Import the repository into Vercel.
-4. Add the following Vercel environment variables for the Production, Preview, and Development environments as needed:
+Map links use Google Maps search or directions URLs. Payment mode supports payment links, UPI URIs, and PayPal.Me links. Coupon mode creates a structured text payload; add a redemption URL when the offer should open a website.
 
-   ```text
-   DATABASE_URL=your Neon pooled connection string
-   QR_API_KEY=optional-long-random-api-key
-   PUBLIC_BASE_URL=https://your-production-domain.example
-   ```
+## Privacy
 
-   `QR_API_KEY` is optional. If omitted, the first serverless request generates one and persists it in Neon. Supplying one through Vercel is preferred when the key must be managed outside the database.
-
-5. Deploy. The first database-backed request creates the required tables automatically. The equivalent SQL is also available at `db/schema.sql` if you prefer to run the migration manually in Neon.
-
-`vercel.json` rewrites public short links from `/r/:slug` to the redirect function at `/api/redirect`, so printed QR codes continue to resolve without an API key.
-
-## Public API
-
-Open **Dashboard → Public API** to view the current API key and endpoint documentation.
-
-The API supports:
-
-- `GET /api/v1/dynamic-codes`
-- `POST /api/v1/dynamic-codes`
-- `PATCH /api/v1/dynamic-codes/:id`
-- `DELETE /api/v1/dynamic-codes/:id`
-- `GET /api/v1/dynamic-codes/:id/analytics`
-- `GET /r/:slug` for public redirects and scan tracking
-
-Authenticate API requests with either:
-
-```text
-X-API-Key: YOUR_API_KEY
-```
-
-or:
-
-```text
-Authorization: Bearer YOUR_API_KEY
-```
-
-Scan events store the timestamp, device category, referrer, and language. Raw IP addresses are not stored.
-
-## Production notes
-
-The dashboard currently uses the API key as its management credential, as requested. Before a public launch, consider adding owner authentication, API-key rotation, rate limiting, abuse protection, monitoring, and database backups.
+QR generation remains in the browser. The project does not include saved presets, a backend, database, public API, redirect service, or scan-tracking system.

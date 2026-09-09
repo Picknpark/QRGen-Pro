@@ -9,10 +9,10 @@
     <title>QR Pro Studio - Production-Grade Custom QR Code Generator</title>
     <!-- Dependency-free favicon -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%232563eb%22/%3E%3Cpath d=%22M17 17h12v12H17zM35 17h12v12H35zM17 35h12v12H17zM35 35h5v5h-5zM43 35h4v12h-4z%22 fill=%22white%22/%3E%3C/svg%3E">
-    <!-- Tailwind config must load before the CDN compiler. -->
-    <script src="assets/js/tailwind.config.js"></script>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load the class-based dark-mode config after the CDN initializes. -->
+    <script src="assets/js/tailwind.config.js"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- QR Code Generator Core Engine CDN -->
@@ -141,14 +141,9 @@
                 <i class="fa-solid fa-wifi"></i> Online
             </span>
 
-            <button type="button" id="btn-install-pwa" class="hidden p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors text-sm" title="Install QR Pro Studio">
+            <button type="button" id="btn-install-pwa" class="inline-flex p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors text-sm items-center gap-1.5" title="Install QR Pro Studio" aria-label="Install QR Pro Studio">
                 <i class="fa-solid fa-download"></i>
                 <span class="hidden lg:inline text-xs font-medium">Install</span>
-            </button>
-
-            <button type="button" id="btn-open-dashboard" class="p-2 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors text-sm flex items-center gap-1.5" title="Open Dynamic QR Dashboard">
-                <i class="fa-solid fa-chart-line"></i>
-                <span class="hidden lg:inline text-xs font-medium">Dashboard</span>
             </button>
 
             <button type="button" id="btn-import-json" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-sm flex items-center gap-1.5" title="Import Settings JSON">
@@ -159,7 +154,7 @@
 
             <button type="button" id="btn-export-json" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-sm flex items-center gap-1.5" title="Export Settings JSON">
                 <i class="fa-solid fa-file-export"></i>
-                <span class="hidden md:inline text-xs font-medium">Save Preset</span>
+                <span class="hidden md:inline text-xs font-medium">Export JSON</span>
             </button>
 
             <div class="h-4 w-px bg-slate-200 dark:bg-slate-800 my-auto"></div>
@@ -229,6 +224,24 @@
                     <button type="button" class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="social">
                         <i class="fa-solid fa-share-nodes text-base"></i> Social
                     </button>
+                    <button type="button" class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="map">
+                        <i class="fa-solid fa-map-location-dot text-base"></i> Map
+                    </button>
+                    <button type="button" class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="payment">
+                        <i class="fa-solid fa-credit-card text-base"></i> Pay
+                    </button>
+                    <button type="button" class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="app">
+                        <i class="fa-solid fa-mobile-screen-button text-base"></i> App
+                    </button>
+                    <button type="button" class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="meeting">
+                        <i class="fa-solid fa-video text-base"></i> Meeting
+                    </button>
+                    <button type="button" class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="coupon">
+                        <i class="fa-solid fa-ticket text-base"></i> Coupon
+                    </button>
+                    <button type="button" class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="review">
+                        <i class="fa-solid fa-star text-base"></i> Review
+                    </button>
                     <button type="button" class="type-btn px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs font-medium flex flex-col items-center gap-1 transition-all text-slate-600 dark:text-slate-400" data-type="raw">
                         <i class="fa-solid fa-code text-base"></i> Raw
                     </button>
@@ -240,37 +253,6 @@
                 </div>
             </div>
 
-            <!-- SAVED PRESETS & AUTO-SAVE -->
-            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                        <i class="fa-solid fa-bookmark text-indigo-500"></i> Saved Presets
-                    </h2>
-                    <span id="autosave-status" class="text-[11px] text-slate-400" role="status" aria-live="polite">Auto-save ready</span>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 mb-3">
-                    <div>
-                        <label class="sr-only" for="input-preset-name">Preset name</label>
-                        <input type="text" id="input-preset-name" placeholder="Preset name, e.g. Office WiFi" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <button type="button" id="btn-save-preset" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-floppy-disk"></i> Save Preset
-                    </button>
-                    <button type="button" id="btn-share-preset" class="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-link"></i> Share URL
-                    </button>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
-                    <div>
-                        <label class="sr-only" for="select-saved-preset">Saved preset</label>
-                        <select id="select-saved-preset" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="">Select a saved preset</option>
-                        </select>
-                    </div>
-                    <button type="button" id="btn-load-preset" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold">Load</button>
-                    <button type="button" id="btn-delete-preset" class="px-3 py-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-semibold">Delete</button>
-                </div>
-            </div>
 
             <!-- TEMPLATES & BATCH GENERATION -->
             <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -290,6 +272,12 @@
                             <option value="event">Event Invitation</option>
                             <option value="email">Support Email</option>
                             <option value="social">Social Profile</option>
+                            <option value="map">Map Location</option>
+                            <option value="payment">Payment Link</option>
+                            <option value="app">App Download</option>
+                            <option value="meeting">Meeting Link</option>
+                            <option value="coupon">Coupon Offer</option>
+                            <option value="review">Review Link</option>
                             <option value="text">Plain Text</option>
                         </select>
                     </div>
@@ -722,73 +710,6 @@
     </div>
 </div>
 
-<!-- MODAL: DYNAMIC QR DASHBOARD -->
-<div id="dynamic-dashboard-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-6xl w-full max-h-[92vh] overflow-y-auto p-6 border border-slate-200 dark:border-slate-800 shadow-2xl">
-        <div class="flex items-center justify-between gap-4 mb-5">
-            <div>
-                <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2"><i class="fa-solid fa-chart-line text-violet-500"></i> Dynamic QR Dashboard</h3>
-                <p class="text-xs text-slate-400 mt-1">Manage redirect-based QR codes and view privacy-conscious scan analytics.</p>
-            </div>
-            <button type="button" id="btn-close-dashboard" aria-label="Close dynamic QR dashboard" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-
-        <div id="dashboard-server-status" class="mb-4 p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300" role="status" aria-live="polite">Connecting to the dashboard service...</div>
-
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-            <div class="p-3 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900/50"><span class="block text-[10px] uppercase tracking-wider text-violet-500">Total Codes</span><strong id="dashboard-total-codes" class="text-xl text-violet-700 dark:text-violet-300">—</strong></div>
-            <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50"><span class="block text-[10px] uppercase tracking-wider text-emerald-500">Active</span><strong id="dashboard-active-codes" class="text-xl text-emerald-700 dark:text-emerald-300">—</strong></div>
-            <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50"><span class="block text-[10px] uppercase tracking-wider text-blue-500">Total Scans</span><strong id="dashboard-total-scans" class="text-xl text-blue-700 dark:text-blue-300">—</strong></div>
-            <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50"><span class="block text-[10px] uppercase tracking-wider text-amber-500">Last 14 Days</span><strong id="dashboard-recent-scans" class="text-xl text-amber-700 dark:text-amber-300">—</strong></div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
-            <div class="lg:col-span-3 space-y-5">
-                <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">Create Dynamic QR</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label for="dynamic-code-name" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Code Name</label>
-                            <input id="dynamic-code-name" type="text" placeholder="Restaurant menu" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-                        </div>
-                        <div>
-                            <label for="dynamic-code-destination" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Destination URL</label>
-                            <input id="dynamic-code-destination" type="url" placeholder="https://example.com/menu" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2 mt-3">
-                        <button type="button" id="btn-create-dynamic" class="px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Create Dynamic QR</button>
-                        <span id="dynamic-form-status" class="text-xs text-slate-500 dark:text-slate-400" role="status" aria-live="polite"></span>
-                    </div>
-                </div>
-
-                <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <div class="flex items-center justify-between mb-3"><h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Scan Activity</h4><span class="text-[11px] text-slate-400">Last 14 days</span></div>
-                    <div id="dashboard-chart" class="h-36 flex items-end gap-1" role="img" aria-label="Scan activity chart"></div>
-                </div>
-            </div>
-
-            <div class="lg:col-span-2 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">Public API</h4>
-                <p class="text-[11px] text-slate-400 mb-2">Use this key from trusted integrations. Rotate it on the server before public deployment.</p>
-                <div class="flex gap-2 mb-3">
-                    <input id="dynamic-api-key" type="text" readonly aria-label="Public API key" class="min-w-0 flex-1 px-2 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-[10px] font-mono">
-                    <button type="button" id="btn-copy-api-key" aria-label="Copy API key" class="px-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs" title="Copy API key"><i class="fa-solid fa-copy"></i></button>
-                </div>
-                <pre id="dynamic-api-docs" class="whitespace-pre-wrap break-words p-3 rounded-xl bg-slate-950 text-slate-200 text-[10px] leading-relaxed overflow-x-auto">API documentation will appear here.</pre>
-            </div>
-        </div>
-
-        <div class="mt-5 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
-            <div class="flex items-center justify-between mb-3"><h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Dynamic QR Codes</h4><span class="text-[11px] text-slate-400">Redirects can be edited without reprinting</span></div>
-            <table class="w-full text-left text-xs">
-                <thead class="text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-800"><tr><th class="py-2 pr-3">Name</th><th class="py-2 pr-3">Destination</th><th class="py-2 pr-3">Scans</th><th class="py-2 pr-3">Status</th><th class="py-2 text-right">Actions</th></tr></thead>
-                <tbody id="dynamic-code-list" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
-            </table>
-        </div>
-        <div id="dynamic-code-detail" class="hidden mt-4 p-4 rounded-2xl border border-violet-200 dark:border-violet-900/50 bg-violet-50 dark:bg-violet-950/20"></div>
-    </div>
-</div>
 
 <!-- MODAL: PRINTABLE SHEET LAYOUT -->
 <div id="print-sheet-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">

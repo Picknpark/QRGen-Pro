@@ -1,4 +1,6 @@
-tailwind.config = {
+// The Tailwind CDN exposes this global and rebuilds when its config changes.
+window.tailwind = window.tailwind || {};
+window.tailwind.config = {
     darkMode: 'class',
     theme: {
         extend: {

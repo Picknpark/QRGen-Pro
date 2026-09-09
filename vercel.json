@@ -1,8 +1,4 @@
 {
-  "rewrites": [
-    {
-      "source": "/r/:slug",
-      "destination": "/api/redirect?slug=:slug"
-    }
-  ]
+  "cleanUrls": true,
+  "trailingSlash": false
 }

@@ -2,7 +2,7 @@
    PRODUCTION QR GENERATOR CORE JS ENGINE
    ========================================================================== */
 
-// Default state is kept separate so reset and preset import stay in sync.
+// Default state is kept separate so reset and settings import stay in sync.
 const DEFAULT_STATE = {
     dataType: 'url', dataValues: {}, size: 2, sizeUnit: 'inch', dpi: 600, ecc: 'H',
     margin: 0.2, marginUnit: 'inch', moduleStyle: 'square', eyeFrameStyle: 'square',
@@ -14,33 +14,7 @@ const DEFAULT_STATE = {
 };
 const state = { ...DEFAULT_STATE, dataValues: {} };
 let validationRequested = false;
-const AUTOSAVE_KEY = 'qr_pro_studio_autosave_v1';
-const PRESETS_KEY = 'qr_pro_studio_presets_v1';
-let autoSaveTimer = null;
 let batchItems = [];
-
-function queueAutoSave() {
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(() => {
-        try {
-            localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
-            const status = document.getElementById('autosave-status');
-            if (status) status.textContent = `Auto-saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-        } catch (error) {
-            const status = document.getElementById('autosave-status');
-            if (status) status.textContent = 'Auto-save unavailable';
-        }
-    }, 350);
-}
-
-function readStoredJson(key, fallback) {
-    try {
-        const value = JSON.parse(localStorage.getItem(key) || 'null');
-        return value ?? fallback;
-    } catch (error) {
-        return fallback;
-    }
-}
 
 // Session Identifiers (Mandatory session rules)
 let SESSION_ID = Math.floor(1000 + Math.random() * 9000).toString();
@@ -164,31 +138,46 @@ const DATA_TYPE_FIELDS = {
         { id: 'platform', label: 'Platform', type: 'select', options: ['facebook', 'instagram', 'twitter', 'x', 'linkedin', 'youtube', 'tiktok', 'snapchat', 'reddit', 'pinterest', 'tumblr', 'threads', 'discord', 'telegram', 'whatsapp', 'messenger', 'wechat', 'line', 'viber', 'signal', 'kakao-talk', 'qq', 'douyin', 'weibo', 'xiaohongshu', 'vk', 'ok', 'mastodon', 'bluesky', 'truth-social', 'gab', 'parler', 'clubhouse', 'twitch', 'kick', 'rumble', 'odysee', 'bilibili', 'dailymotion', 'vimeo', 'quora', 'medium', 'substack', 'patreon', 'behance', 'dribbble', 'deviantart', 'flickr', 'imgur', 'pixiv', 'vsco', 'bereal', 'yubo', 'meetup', 'nextdoor', 'skype', 'teams', 'slack'] },
         { id: 'handle', label: 'Username or URL', type: 'text', placeholder: 'username' }
     ],
+    map: [
+        { id: 'mode', label: 'Map Action', type: 'select', options: ['search', 'directions'] },
+        { id: 'query', label: 'Place or Address', type: 'text', placeholder: 'Dhaka, Bangladesh' },
+        { id: 'travelmode', label: 'Travel Mode', type: 'select', options: ['driving', 'walking', 'bicycling', 'transit'] }
+    ],
+    payment: [
+        { id: 'provider', label: 'Payment Method', type: 'select', options: ['link', 'upi', 'paypal'] },
+        { id: 'recipient', label: 'Recipient / Payment ID', type: 'text', placeholder: 'merchant@example or merchant@upi' },
+        { id: 'name', label: 'Recipient Name (Optional)', type: 'text', placeholder: 'Example Store' },
+        { id: 'amount', label: 'Amount (Optional)', type: 'text', placeholder: '25.00' },
+        { id: 'currency', label: 'Currency', type: 'text', placeholder: 'INR' },
+        { id: 'note', label: 'Payment Note (Optional)', type: 'text', placeholder: 'Order 1234' },
+        { id: 'url', label: 'Payment URL (for Link)', type: 'url', placeholder: 'https://example.com/pay' }
+    ],
+    app: [
+        { id: 'platform', label: 'App Link Type', type: 'select', options: ['universal', 'android', 'ios'] },
+        { id: 'url', label: 'App or Download URL', type: 'url', placeholder: 'https://example.com/download' },
+        { id: 'label', label: 'App Name (Optional)', type: 'text', placeholder: 'QR Pro Studio' }
+    ],
+    meeting: [
+        { id: 'platform', label: 'Meeting Platform', type: 'select', options: ['google-meet', 'zoom', 'microsoft-teams', 'custom'] },
+        { id: 'url', label: 'Meeting URL', type: 'url', placeholder: 'https://meet.google.com/abc-defg-hij' },
+        { id: 'title', label: 'Meeting Title (Optional)', type: 'text', placeholder: 'Weekly team meeting' }
+    ],
+    coupon: [
+        { id: 'code', label: 'Coupon Code', type: 'text', placeholder: 'SAVE20' },
+        { id: 'title', label: 'Offer Title', type: 'text', placeholder: '20% off your order' },
+        { id: 'discount', label: 'Discount (Optional)', type: 'text', placeholder: '20%' },
+        { id: 'expires', label: 'Expires (Optional)', type: 'date' },
+        { id: 'url', label: 'Redemption URL (Optional)', type: 'url', placeholder: 'https://example.com/redeem' }
+    ],
+    review: [
+        { id: 'platform', label: 'Review Platform', type: 'select', options: ['google', 'facebook', 'yelp', 'tripadvisor', 'custom'] },
+        { id: 'url', label: 'Review URL', type: 'url', placeholder: 'https://example.com/review' },
+        { id: 'business', label: 'Business Name (Optional)', type: 'text', placeholder: 'Example Store' }
+    ],
     raw: [
         { id: 'raw', label: 'Raw Payload String', type: 'textarea', placeholder: 'Raw QR data payload...' }
     ]
 };
-
-function encodeShareState(value) {
-    return encodeBase64(JSON.stringify(value)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
-
-function decodeShareState(value) {
-    const base64 = String(value).replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - String(value).length % 4) % 4);
-    const binary = atob(base64);
-    const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
-    return JSON.parse(new TextDecoder().decode(bytes));
-}
-
-function getSharedStateFromUrl() {
-    try {
-        const shared = new URLSearchParams(location.search).get('share');
-        const decoded = shared ? decodeShareState(shared) : null;
-        return decoded && typeof decoded === 'object' && !Array.isArray(decoded) ? decoded : null;
-    } catch (error) {
-        return null;
-    }
-}
 
 function getTemplateState(template) {
     const pad = number => String(number).padStart(2, '0');
@@ -204,6 +193,12 @@ function getTemplateState(template) {
         event: { dataType: 'event', dataValues: { title: 'Team Event', location: 'Conference Room', start: localDateTime(24), end: localDateTime(26) } },
         email: { dataType: 'email', dataValues: { email: 'support@example.com', subject: 'Support request', body: 'Hello, I need help with...' } },
         social: { dataType: 'social', dataValues: { platform: 'instagram', handle: 'your-brand' } },
+        map: { dataType: 'map', dataValues: { mode: 'search', query: 'Dhaka, Bangladesh', travelmode: 'driving' } },
+        payment: { dataType: 'payment', dataValues: { provider: 'link', recipient: 'Example Store', url: 'https://example.com/pay' } },
+        app: { dataType: 'app', dataValues: { platform: 'universal', url: 'https://example.com/app', label: 'Example App' } },
+        meeting: { dataType: 'meeting', dataValues: { platform: 'google-meet', url: 'https://meet.google.com/abc-defg-hij', title: 'Team Meeting' } },
+        coupon: { dataType: 'coupon', dataValues: { code: 'SAVE20', title: '20% off your order', discount: '20%', expires: '', url: 'https://example.com/redeem' } },
+        review: { dataType: 'review', dataValues: { platform: 'custom', url: 'https://example.com/review', business: 'Example Store' } },
         text: { dataType: 'text', dataValues: { text: 'Replace this sample text with your message.' } }
     };
     return templates[template] || templates.url;
@@ -266,6 +261,12 @@ function parseBatchText(text, filename = '') {
 function asText(value) { return value == null ? '' : String(value); }
 function escapeWifi(value) { return asText(value).replace(/[\\;,:\"]/g, match => `\\${match}`); }
 function escapeVCard(value) { return asText(value).replace(/[\\;,]/g, match => `\\${match}`).replace(/\r?\n/g, '\\n'); }
+function readThemePreference(fallback = 'light') {
+    try { return localStorage.getItem('qr_theme') || fallback; } catch (error) { return fallback; }
+}
+function writeThemePreference(theme) {
+    try { localStorage.setItem('qr_theme', theme); } catch (error) { /* private browsing can disable storage */ }
+}
 function formatEventDate(value) {
     const digits = asText(value).replace(/\D/g, '');
     return digits.length >= 12 ? `${digits.slice(0, 8)}T${digits.slice(8, 12)}00` : '';
@@ -315,6 +316,45 @@ function generatePayloadString() {
                 threads: `https://threads.net/@${handle}`, pinterest: `https://pinterest.com/${handle}`
             };
             return paths[platform] || `https://${platform}.com/${handle}`;
+        }
+        case 'map': {
+            const query = value('query').trim();
+            if (!query) return '';
+            const params = new URLSearchParams({ api: '1' });
+            if (value('mode') === 'directions') {
+                params.set('destination', query);
+                params.set('travelmode', value('travelmode') || 'driving');
+                return `https://www.google.com/maps/dir/?${params.toString()}`;
+            }
+            params.set('query', query);
+            return `https://www.google.com/maps/search/?${params.toString()}`;
+        }
+        case 'payment': {
+            const provider = value('provider') || 'link';
+            if (provider === 'link') return value('url').trim();
+            if (!value('recipient').trim()) return '';
+            if (provider === 'upi') {
+                const params = new URLSearchParams({ pa: value('recipient').trim(), pn: value('name').trim() || value('recipient').trim(), cu: value('currency').trim().toUpperCase() || 'INR' });
+                if (value('amount')) params.set('am', value('amount').trim());
+                if (value('note')) params.set('tn', value('note').trim());
+                return `upi://pay?${params.toString()}`;
+            }
+            return `https://paypal.me/${encodeURIComponent(value('recipient').trim())}${value('amount') ? `/${encodeURIComponent(value('amount').trim())}` : ''}`;
+        }
+        case 'app':
+        case 'meeting':
+        case 'review':
+            return value('url').trim();
+        case 'coupon': {
+            const lines = [
+                'COUPON',
+                `CODE:${value('code')}`,
+                `TITLE:${value('title')}`,
+                value('discount') ? `DISCOUNT:${value('discount')}` : '',
+                value('expires') ? `EXPIRES:${value('expires')}` : '',
+                value('url') ? `URL:${value('url')}` : ''
+            ].filter(Boolean);
+            return value('code') ? lines.join('\n') : '';
         }
         case 'raw': return value('raw');
         default: return '';
@@ -384,6 +424,33 @@ function validatePayload() {
         case 'social':
             if (hasInput) required('handle', 'Username or URL');
             if (value('handle') && !/^https?:\/\//i.test(value('handle')) && !/^[\w.@-]+$/.test(value('handle'))) errors.handle = 'Use a username or a valid URL.';
+            break;
+        case 'map':
+            if (hasInput) required('query', 'Place or address');
+            if (value('mode') && !['search', 'directions'].includes(value('mode'))) errors.mode = 'Choose a valid map action.';
+            break;
+        case 'payment': {
+            const provider = value('provider') || 'link';
+            if (provider === 'link') {
+                if (hasInput) required('url', 'Payment URL');
+                if (value('url') && !validUrl(value('url'))) errors.url = 'Enter a valid payment URL.';
+            } else {
+                if (hasInput) required('recipient', 'Recipient or payment ID');
+                if (provider === 'upi' && value('recipient') && !value('recipient').includes('@')) errors.recipient = 'Enter a valid UPI ID, such as name@bank.';
+            }
+            if (value('amount') && (!Number.isFinite(Number(value('amount'))) || Number(value('amount')) < 0)) errors.amount = 'Amount must be zero or greater.';
+            if (value('currency') && !/^[A-Za-z]{3}$/.test(value('currency'))) errors.currency = 'Use a three-letter currency code.';
+            break;
+        }
+        case 'app':
+        case 'meeting':
+        case 'review':
+            if (hasInput) required('url', 'URL');
+            if (value('url') && !validUrl(value('url'))) errors.url = 'Enter a valid http or https URL.';
+            break;
+        case 'coupon':
+            if (hasInput) required('code', 'Coupon code');
+            if (value('url') && !validUrl(value('url'))) errors.url = 'Enter a valid redemption URL.';
             break;
         case 'raw':
             if (hasInput || validationRequested) required('raw', 'Payload');
@@ -837,7 +904,6 @@ function updatePreview() {
     warnBox.classList.toggle('hidden', !(state.logoDataUrl && state.logoSize > 30));
     updateValidationUI(validation);
     updateSafetyUI(getSafetyReport(validation));
-    queueAutoSave();
 }
 
 // Render Dynamic Fields
@@ -878,7 +944,10 @@ function renderDynamicFields() {
         input.id = `field-${state.dataType}-${field.id}`;
         input.dataset.fieldId = field.id;
         input.placeholder = field.placeholder || '';
-        input.value = state.dataValues[field.id] || '';
+        const storedValue = state.dataValues[field.id];
+        input.value = field.type === 'select'
+            ? (field.options.includes(storedValue) ? storedValue : field.options[0])
+            : (storedValue || '');
         input.setAttribute('aria-invalid', 'false');
 
         const updateValue = event => {
@@ -1091,39 +1160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeClasses = ['active', 'border-blue-600', 'bg-blue-50', 'dark:bg-blue-950/50', 'text-blue-600', 'dark:text-blue-400'];
     const inactiveClasses = ['border-slate-200', 'dark:border-slate-800', 'text-slate-600', 'dark:text-slate-400'];
     const on = (id, event, handler) => $(id).addEventListener(event, handler);
-    const autosaved = readStoredJson(AUTOSAVE_KEY, null);
-    if (autosaved && typeof autosaved === 'object' && !Array.isArray(autosaved)) Object.assign(state, normalizeState(autosaved));
-    const sharedState = getSharedStateFromUrl();
-    if (sharedState) Object.assign(state, normalizeState(sharedState));
-    let savedPresets = readStoredJson(PRESETS_KEY, []);
-    if (!Array.isArray(savedPresets)) savedPresets = [];
 
-    function setAutosaveStatus(text) {
-        const status = $('autosave-status');
-        if (status) status.textContent = text;
-    }
-
-    function refreshPresetList() {
-        const select = $('select-saved-preset');
-        select.innerHTML = '<option value="">Select a saved preset</option>';
-        savedPresets.sort((first, second) => second.updatedAt - first.updatedAt).forEach(preset => {
-            const option = document.createElement('option');
-            option.value = preset.id;
-            option.textContent = preset.name;
-            select.appendChild(option);
-        });
-    }
-
-    function persistPresets() {
-        try {
-            localStorage.setItem(PRESETS_KEY, JSON.stringify(savedPresets));
-            setAutosaveStatus(`${savedPresets.length} saved preset${savedPresets.length === 1 ? '' : 's'}`);
-            return true;
-        } catch (error) {
-            setAutosaveStatus('Preset storage is full');
-            return false;
-        }
-    }
 
     function snapshotState() {
         return JSON.parse(JSON.stringify(state));
@@ -1149,9 +1186,8 @@ document.addEventListener('DOMContentLoaded', () => {
         state.theme = theme === 'dark' ? 'dark' : 'light';
         root.classList.toggle('dark', state.theme === 'dark');
         root.classList.toggle('light', state.theme !== 'dark');
-        if (persist) localStorage.setItem('qr_theme', state.theme);
-        queueAutoSave();
-    }
+        if (persist) writeThemePreference(state.theme);
+        }
 
     function syncControls() {
         const values = {
@@ -1201,147 +1237,9 @@ document.addEventListener('DOMContentLoaded', () => {
         text.addEventListener('change', () => { text.value = state[key]; });
     }
 
-    let dashboardData = null;
-
-    async function dashboardRequest(endpoint, options = {}) {
-        const response = await fetch(endpoint, {
-            ...options,
-            headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) }
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || `Dashboard request failed (${response.status})`);
-        return data;
-    }
-
-    function setDashboardStatus(message, error = false) {
-        const status = $('dashboard-server-status');
-        status.textContent = message;
-        status.className = `mb-4 p-3 rounded-xl text-xs ${error ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`;
-    }
-
-    function renderAnalyticsChart(daily, target) {
-        const chart = typeof target === 'string' ? $(target) : target;
-        if (!chart) return;
-        const values = Array.isArray(daily) ? daily : [];
-        const max = Math.max(1, ...values.map(item => Number(item.scans) || 0));
-        chart.innerHTML = values.map(item => {
-            const amount = Number(item.scans) || 0;
-            const height = amount ? Math.max(8, amount / max * 100) : 3;
-            const label = String(item.date || '').slice(5);
-            return `<div class="flex-1 h-full min-w-[6px] flex flex-col items-center justify-end gap-1" title="${escapeHtml(item.date || '')}: ${amount} scan${amount === 1 ? '' : 's'}"><span class="text-[9px] text-slate-400">${amount || ''}</span><div class="w-full max-w-[22px] rounded-t bg-violet-500" style="height:${height}%"></div><span class="text-[8px] text-slate-400 rotate-45 origin-top-left">${escapeHtml(label)}</span></div>`;
-        }).join('') || '<span class="m-auto text-xs text-slate-400">No scan data yet.</span>';
-    }
-
-    function renderDynamicCodes(codes) {
-        const list = $('dynamic-code-list');
-        if (!codes.length) {
-            list.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">No dynamic QR codes yet. Create one above.</td></tr>';
-            return;
-        }
-        list.innerHTML = codes.map(code => `<tr>
-            <td class="py-3 pr-3"><div class="font-semibold text-slate-700 dark:text-slate-200">${escapeHtml(code.name)}</div><a class="text-[10px] text-violet-600 dark:text-violet-400 hover:underline" href="${escapeHtml(code.shortUrl)}" target="_blank" rel="noopener">${escapeHtml(code.shortUrl)}</a></td>
-            <td class="py-3 pr-3 max-w-[220px] truncate text-slate-500 dark:text-slate-400" title="${escapeHtml(code.destination)}">${escapeHtml(code.destination)}</td>
-            <td class="py-3 pr-3 font-mono text-slate-700 dark:text-slate-300">${Number(code.scans) || 0}</td>
-            <td class="py-3 pr-3"><span class="px-2 py-1 rounded-full text-[10px] font-semibold ${code.active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}">${code.active ? 'Active' : 'Paused'}</span></td>
-            <td class="py-3 text-right whitespace-nowrap"><button type="button" data-action="analytics" data-id="${escapeHtml(code.id)}" class="text-violet-600 dark:text-violet-400 hover:underline mr-2">Stats</button><button type="button" data-action="use" data-id="${escapeHtml(code.id)}" class="text-cyan-600 dark:text-cyan-400 hover:underline mr-2">Use</button><button type="button" data-action="toggle" data-id="${escapeHtml(code.id)}" class="text-amber-600 dark:text-amber-400 hover:underline mr-2">${code.active ? 'Pause' : 'Resume'}</button><button type="button" data-action="edit" data-id="${escapeHtml(code.id)}" class="text-slate-600 dark:text-slate-300 hover:underline mr-2">Edit</button><button type="button" data-action="delete" data-id="${escapeHtml(code.id)}" class="text-rose-600 dark:text-rose-400 hover:underline">Delete</button></td>
-        </tr>`).join('');
-    }
-
-    function renderDashboard(data) {
-        dashboardData = data;
-        $('dashboard-total-codes').textContent = data.totalCodes ?? 0;
-        $('dashboard-active-codes').textContent = data.activeCodes ?? 0;
-        $('dashboard-total-scans').textContent = data.totalScans ?? 0;
-        $('dashboard-recent-scans').textContent = (data.daily || []).reduce((sum, item) => sum + (Number(item.scans) || 0), 0);
-        renderAnalyticsChart(data.daily, 'dashboard-chart');
-        renderDynamicCodes(data.codes || []);
-        $('dynamic-api-key').value = data.apiKey || '';
-        $('dynamic-api-docs').textContent = JSON.stringify(data.api, null, 2);
-        setDashboardStatus(`Dashboard connected · ${data.codes?.length || 0} dynamic code${data.codes?.length === 1 ? '' : 's'}`);
-    }
-
-    async function loadDashboard() {
-        setDashboardStatus('Loading dashboard data...');
-        try { renderDashboard(await dashboardRequest('/api/dashboard')); }
-        catch (error) { setDashboardStatus(`${error.message}. Start the project with npm start to enable dynamic QR features.`, true); renderDynamicCodes([]); }
-    }
-
-    async function showCodeAnalytics(id) {
-        try {
-            const data = await dashboardRequest(`/api/dynamic-codes/${encodeURIComponent(id)}/analytics`);
-            const detail = $('dynamic-code-detail');
-            detail.classList.remove('hidden');
-            detail.innerHTML = `<div class="flex items-center justify-between gap-3 mb-3"><div><h4 class="text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">${escapeHtml(data.code.name)} analytics</h4><p class="text-[11px] text-slate-500 dark:text-slate-400">${data.totalScans} total scan${data.totalScans === 1 ? '' : 's'}</p></div><button type="button" id="btn-close-code-detail" class="text-xs text-slate-500 hover:underline">Close</button></div><div id="dynamic-detail-chart" class="h-28 flex items-end gap-1"></div><p class="mt-3 text-[11px] text-slate-500 dark:text-slate-400">Recent scan devices: ${escapeHtml((data.recent || []).map(item => item.device).join(', ') || 'No scans yet')}</p>`;
-            renderAnalyticsChart(data.daily, 'dynamic-detail-chart');
-            $('btn-close-code-detail').addEventListener('click', () => detail.classList.add('hidden'));
-        } catch (error) { setDashboardStatus(error.message, true); }
-    }
-
-    async function createDynamicCode() {
-        const name = $('dynamic-code-name').value.trim();
-        const destination = $('dynamic-code-destination').value.trim() || generatePayloadString();
-        try {
-            const result = await dashboardRequest('/api/dynamic-codes', { method: 'POST', body: JSON.stringify({ name, destination }) });
-            $('dynamic-form-status').textContent = 'Created. The short URL is now ready to use.';
-            $('dynamic-code-name').value = '';
-            $('dynamic-code-destination').value = result.code.destination;
-            const current = snapshotState();
-            current.dataType = 'url';
-            current.dataValues = { url: result.code.shortUrl };
-            applyLoadedState(current);
-            await loadDashboard();
-        } catch (error) { $('dynamic-form-status').textContent = error.message; }
-    }
-
-    on('btn-open-dashboard', 'click', () => {
-        const payload = generatePayloadString();
-        if (/^https?:\/\//i.test(payload) && !$('dynamic-code-destination').value) $('dynamic-code-destination').value = payload;
-        $('dynamic-dashboard-modal').classList.remove('hidden');
-        loadDashboard();
-    });
-    on('btn-close-dashboard', 'click', () => $('dynamic-dashboard-modal').classList.add('hidden'));
-    on('btn-create-dynamic', 'click', createDynamicCode);
-    $('dynamic-code-list').addEventListener('click', async event => {
-        const button = event.target.closest('button[data-action]');
-        if (!button || !dashboardData) return;
-        const code = dashboardData.codes.find(item => item.id === button.dataset.id);
-        if (!code) return;
-        try {
-            if (button.dataset.action === 'analytics') return showCodeAnalytics(code.id);
-            if (button.dataset.action === 'use') {
-                const current = snapshotState();
-                current.dataType = 'url';
-                current.dataValues = { url: code.shortUrl };
-                applyLoadedState(current);
-                return;
-            }
-            if (button.dataset.action === 'toggle') await dashboardRequest(`/api/dynamic-codes/${encodeURIComponent(code.id)}`, { method: 'PATCH', body: JSON.stringify({ active: !code.active }) });
-            if (button.dataset.action === 'edit') {
-                const destination = window.prompt('New destination URL', code.destination);
-                if (destination === null) return;
-                await dashboardRequest(`/api/dynamic-codes/${encodeURIComponent(code.id)}`, { method: 'PATCH', body: JSON.stringify({ destination }) });
-            }
-            if (button.dataset.action === 'delete') {
-                if (!window.confirm(`Delete ${code.name}?`)) return;
-                await dashboardRequest(`/api/dynamic-codes/${encodeURIComponent(code.id)}`, { method: 'DELETE' });
-            }
-            await loadDashboard();
-        } catch (error) { setDashboardStatus(error.message, true); }
-    });
-    on('btn-copy-api-key', 'click', async () => {
-        const key = $('dynamic-api-key').value;
-        try {
-            await navigator.clipboard.writeText(key);
-            setDashboardStatus('API key copied');
-        } catch (error) {
-            $('dynamic-api-key').select();
-            document.execCommand('copy');
-            setDashboardStatus('API key copied');
-        }
-    });
 
     document.querySelector('#session-id-display').textContent = SESSION_ID;
-    applyTheme(localStorage.getItem('qr_theme') || state.theme, false);
+    applyTheme(readThemePreference(state.theme), false);
     on('theme-toggle', 'click', () => applyTheme(state.theme === 'dark' ? 'light' : 'dark'));
 
     typeBtns.forEach(button => button.addEventListener('click', () => {
@@ -1361,53 +1259,6 @@ document.addEventListener('DOMContentLoaded', () => {
     on('select-eye-frame-style', 'change', event => { state.eyeFrameStyle = event.target.value; updatePreview(); });
     on('select-eyeball-style', 'change', event => { state.eyeballStyle = event.target.value; updatePreview(); });
 
-    on('btn-save-preset', 'click', () => {
-        const nameInput = $('input-preset-name');
-        const name = nameInput.value.trim() || `${state.dataType.toUpperCase()} ${new Date().toLocaleDateString()}`;
-        const existing = savedPresets.find(preset => preset.name.toLowerCase() === name.toLowerCase());
-        const preset = { id: existing?.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name, updatedAt: Date.now(), state: snapshotState() };
-        savedPresets = savedPresets.filter(item => item.id !== preset.id);
-        savedPresets.push(preset);
-        persistPresets();
-        refreshPresetList();
-        $('select-saved-preset').value = preset.id;
-        nameInput.value = '';
-    });
-    on('btn-share-preset', 'click', async () => {
-        const url = new URL(location.href);
-        url.searchParams.set('share', encodeShareState(snapshotState()));
-        url.hash = '';
-        const shareUrl = url.toString();
-        if (shareUrl.length > 8000) setAutosaveStatus('Share URL is large; remove the logo first');
-        try {
-            if (navigator.share) await navigator.share({ title: 'QR Pro Studio preset', url: shareUrl });
-            else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(shareUrl); setAutosaveStatus('Share URL copied'); }
-            else {
-                const textarea = document.createElement('textarea');
-                textarea.value = shareUrl;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                textarea.remove();
-                setAutosaveStatus('Share URL copied');
-            }
-        } catch (error) {
-            setAutosaveStatus('Share cancelled');
-        }
-    });
-    on('btn-load-preset', 'click', () => {
-        const preset = savedPresets.find(item => item.id === $('select-saved-preset').value);
-        if (preset) applyLoadedState(preset.state);
-    });
-    on('btn-delete-preset', 'click', () => {
-        const select = $('select-saved-preset');
-        if (!select.value) return;
-        savedPresets = savedPresets.filter(item => item.id !== select.value);
-        persistPresets();
-        refreshPresetList();
-    });
-    $('input-preset-name').addEventListener('keydown', event => { if (event.key === 'Enter') $('btn-save-preset').click(); });
-    refreshPresetList();
 
     function batchResults() { return batchItems.map(renderBatchItem); }
 
@@ -1590,7 +1441,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.key === 'Escape') {
             closeCameraModal();
             closePrintSheet();
-            $('dynamic-dashboard-modal').classList.add('hidden');
         }
     });
     const sheetPages = {
@@ -1659,7 +1509,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `QR_Preset_${SESSION_ID}.json`;
+        link.download = `QR_Settings_${SESSION_ID}.json`;
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -1675,10 +1525,10 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = loadEvent => {
             try {
                 const loaded = JSON.parse(loadEvent.target.result);
-                if (!loaded || typeof loaded !== 'object' || Array.isArray(loaded)) throw new Error('Preset must be an object');
+                if (!loaded || typeof loaded !== 'object' || Array.isArray(loaded)) throw new Error('Settings file must be an object');
                 applyLoadedState(loaded);
             } catch (error) {
-                console.error('Invalid JSON preset file', error);
+                console.error('Invalid JSON settings file', error);
             } finally {
                 jsonInput.value = '';
             }
@@ -1688,25 +1538,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     on('btn-reset-engine', 'click', () => {
         regenerateSessionId();
+        const theme = state.theme;
         Object.assign(state, normalizeState(DEFAULT_STATE));
+        state.theme = theme;
         state.dataValues = {};
         validationRequested = false;
         fileInput.value = '';
-        applyTheme('light');
+        applyTheme(theme, false);
         syncControls();
         renderDynamicFields();
     });
 
     let deferredInstallPrompt = null;
+    if (window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true) $('btn-install-pwa').classList.add('hidden');
     window.addEventListener('beforeinstallprompt', event => {
         event.preventDefault();
         deferredInstallPrompt = event;
         $('btn-install-pwa').classList.remove('hidden');
     });
     on('btn-install-pwa', 'click', async () => {
-        if (!deferredInstallPrompt) return;
+        if (!deferredInstallPrompt) {
+            const status = $('network-status');
+            status.innerHTML = '<i class="fa-solid fa-circle-info"></i> Use your browser menu to install';
+            status.className = 'hidden sm:inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300';
+            window.setTimeout(updateNetworkStatus, 3500);
+            return;
+        }
         deferredInstallPrompt.prompt();
         await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+    });
+    window.addEventListener('appinstalled', () => {
         deferredInstallPrompt = null;
         $('btn-install-pwa').classList.add('hidden');
     });

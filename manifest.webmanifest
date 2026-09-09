@@ -2,7 +2,7 @@
   "name": "QR Pro Studio",
   "short_name": "QR Pro Studio",
   "description": "Create, validate, customize, and print production-ready QR codes.",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
